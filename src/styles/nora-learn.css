@@ -1,0 +1,203 @@
+/* ====================================================================
+   @neoffice/nora-learn-react — Styles
+   Port of nora_learn_sidebar.css + relevant parts of nora_learn.css
+   ==================================================================== */
+
+/* ====== SIDEBAR (Floating Learn Popup) ====== */
+
+.nora-lp {
+  position: fixed;
+  width: 380px;
+  max-height: 70vh;
+  z-index: 100005;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 3px solid #7c3aed;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.25), 0 8px 40px rgba(0, 0, 0, 0.12), 0 0 0 4px rgba(124, 58, 237, 0.06);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: top 0.3s ease, bottom 0.3s ease, left 0.3s ease, right 0.3s ease;
+  overflow: hidden;
+}
+
+/* Position variants */
+.nora-lp.nora-lp-left.nora-lp-bottom { left: 16px; bottom: 16px; right: auto; top: auto; }
+.nora-lp.nora-lp-left.nora-lp-top { left: 16px; top: 80px; right: auto; bottom: auto; }
+.nora-lp.nora-lp-right.nora-lp-bottom { right: 16px; bottom: 16px; left: auto; top: auto; }
+.nora-lp.nora-lp-right.nora-lp-top { right: 16px; top: 80px; left: auto; bottom: auto; }
+
+/* Header */
+.nora-lp-header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(0, 0, 0, 0.06); flex-shrink: 0; }
+.nora-lp-icon { width: 24px; height: 24px; flex-shrink: 0; }
+.nora-lp-header-text { flex: 1; min-width: 0; }
+.nora-lp-title { font-size: 13px; font-weight: 600; color: #1e293b; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nora-lp-step { font-size: 10px; color: #7c3aed; font-weight: 600; }
+.nora-lp-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.nora-lp-btn { background: rgba(0, 0, 0, 0.05); border: none; color: #64748b; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.nora-lp-btn:hover { background: rgba(0, 0, 0, 0.1); color: #334155; }
+
+/* Progress bar */
+.nora-lp-progress { height: 2px; background: rgba(0, 0, 0, 0.05); flex-shrink: 0; }
+.nora-lp-progress-bar { height: 100%; background: #7c3aed; transition: width 0.5s ease; border-radius: 2px; width: 0%; }
+
+/* Messages area */
+.nora-lp-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.nora-lp-messages::-webkit-scrollbar { width: 3px; }
+.nora-lp-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+/* Step message */
+.nora-ls-step-message { animation: nora-lp-fadeIn 0.3s ease; }
+.nora-ls-step-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #7c3aed; margin-bottom: 6px; }
+.nora-ls-step-text { color: #334155; font-size: 13px; line-height: 1.55; }
+.nora-ls-step-text .nora-ls-link { color: #7c3aed; text-decoration: underline; font-weight: 500; }
+.nora-ls-step-text .nora-ls-link:hover { color: #6d28d9; }
+.nora-ls-step-text strong { font-weight: 600; color: #1e293b; }
+.nora-ls-step-text em { font-style: italic; }
+.nora-ls-step-text .nora-ls-code { background: rgba(124, 58, 237, 0.08); color: #7c3aed; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+
+/* Step buttons */
+.nora-ls-step-buttons { display: flex; gap: 6px; margin-top: 10px; opacity: 1; transform: translateY(0); transition: opacity 0.4s ease, transform 0.4s ease; }
+.nora-ls-step-buttons.nora-ls-buttons-hidden { opacity: 0; transform: translateY(8px); pointer-events: none; }
+.nora-ls-btn { padding: 6px 12px; border-radius: 8px; border: none; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.nora-ls-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.nora-ls-do-it { background: #1a1a1a; color: white; }
+.nora-ls-do-it:hover:not(:disabled) { background: #333; }
+.nora-ls-continue { background: #7c3aed; color: white; }
+.nora-ls-continue:hover:not(:disabled) { background: #6d28d9; }
+
+/* Chat toggle (kept for future use) */
+.nora-lp-chat-toggle { display: none; }
+
+/* Shared message styles */
+.nora-ls-message { display: flex; gap: 8px; align-items: flex-start; }
+.nora-ls-message-user { flex-direction: row-reverse; }
+.nora-ls-avatar { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; }
+.nora-ls-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.nora-ls-message-content { max-width: 90%; font-size: 12px; line-height: 1.5; color: #334155; }
+.nora-ls-message-bot .nora-ls-message-content { background: rgba(0, 0, 0, 0.03); padding: 8px 12px; border-radius: 2px 12px 12px 12px; }
+.nora-ls-message-user .nora-ls-message-content { background: #7c3aed; color: white; padding: 8px 12px; border-radius: 12px 2px 12px 12px; }
+
+/* Animations */
+@keyframes nora-lp-fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ====== STEP POPOVER (positioned with arrow) ====== */
+
+#nora-step-popover {
+  position: fixed;
+  z-index: 100005;
+  pointer-events: none;
+  width: 420px;
+  max-width: 90vw;
+  background: #faf5ff;
+  border: 3px solid #7c3aed;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.35), 0 8px 40px rgba(124, 58, 237, 0.15), 0 0 0 4px rgba(124, 58, 237, 0.08);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: nora-pop-fadein 0.3s ease;
+}
+
+@keyframes nora-pop-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.nora-pop-arrow { position: absolute; width: 12px; height: 12px; background: #faf5ff; border: 3px solid #7c3aed; transform: rotate(45deg); }
+#nora-step-popover.nora-pop-bottom .nora-pop-arrow { top: -7px; left: 50%; margin-left: -6px; border-right: none; border-bottom: none; }
+#nora-step-popover.nora-pop-top .nora-pop-arrow { bottom: -7px; left: 50%; margin-left: -6px; border-left: none; border-top: none; }
+#nora-step-popover.nora-pop-right .nora-pop-arrow { left: -7px; top: 24px; border-right: none; border-top: none; }
+#nora-step-popover.nora-pop-left .nora-pop-arrow { right: -7px; top: 24px; border-left: none; border-bottom: none; }
+
+.nora-pop-badge { font-size: 11px; font-weight: 600; color: #7c3aed; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.nora-pop-text { color: #1f2937; margin-bottom: 8px; }
+.nora-pop-text b, .nora-pop-text strong { color: #7c3aed; }
+
+/* ====== ASSIST PANEL (Notification card) ====== */
+
+#nora-assist-panel {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  z-index: 1051;
+  pointer-events: none;
+}
+
+.nora-assist-card {
+  pointer-events: auto;
+  width: 340px;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+  font-size: 13px;
+  animation: nora-assist-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes nora-assist-in { 0% { transform: translateX(120%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+.nora-assist-card.out { animation: nora-assist-out 0.4s ease forwards; pointer-events: none; }
+@keyframes nora-assist-out { to { transform: translateX(400px); opacity: 0; } }
+
+.nora-assist-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; }
+.nora-assist-header-left { display: flex; align-items: center; gap: 8px; }
+.nora-assist-indicator { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; flex-shrink: 0; }
+.nora-assist-title { font-weight: 600; font-size: 13px; color: #1f2937; }
+.nora-assist-close { background: none; border: none; font-size: 18px; line-height: 1; color: #9ca3af; cursor: pointer; padding: 0 2px; transition: color 0.15s; }
+.nora-assist-close:hover { color: #6b7280; }
+.nora-assist-items { padding: 0 14px; }
+.nora-assist-item { padding: 10px 0; border-top: 1px solid #e5e7eb; }
+.nora-assist-item:first-child { border-top: none; }
+.nora-assist-item-disabled { opacity: 0.5; }
+.nora-assist-item-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.nora-assist-item-info { flex: 1; min-width: 0; }
+.nora-assist-item-title { display: block; font-weight: 500; color: #1f2937; line-height: 1.3; }
+.nora-assist-item-meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.nora-assist-item-duration { font-size: 11px; color: #9ca3af; }
+.nora-assist-item-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 8px; background: #7c3aed; color: white; }
+.nora-assist-item-prereq { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+.nora-assist-dismiss-one { background: none; border: none; font-size: 14px; line-height: 1; color: #d1d5db; cursor: pointer; padding: 2px 4px; flex-shrink: 0; transition: color 0.15s; opacity: 0; }
+.nora-assist-item:hover .nora-assist-dismiss-one { opacity: 1; }
+.nora-assist-dismiss-one:hover { color: #ef4444; }
+.nora-assist-item-actions { margin-top: 6px; }
+.nora-assist-footer { display: flex; justify-content: flex-end; padding: 6px 14px 10px; }
+
+/* Buttons in assist panel */
+.nora-assist-item-actions .btn { padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.nora-assist-item-actions .btn-primary { background: #7c3aed; border: none; color: white; }
+.nora-assist-item-actions .btn-primary:hover { background: #6d28d9; }
+.nora-assist-item-actions .btn-default { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); color: #64748b; }
+.nora-assist-footer .btn { padding: 4px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+.nora-assist-footer .btn-default { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); color: #64748b; }
+
+/* ====== DARK MODE ====== */
+
+[data-theme="dark"] .nora-lp { background: rgba(30, 41, 59, 0.92); border-color: rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }
+[data-theme="dark"] .nora-lp-header { border-bottom-color: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] .nora-lp-title { color: #e2e8f0; }
+[data-theme="dark"] .nora-lp-btn { background: rgba(255, 255, 255, 0.08); color: #94a3b8; }
+[data-theme="dark"] .nora-lp-btn:hover { background: rgba(255, 255, 255, 0.15); color: #e2e8f0; }
+[data-theme="dark"] .nora-ls-step-text { color: #cbd5e1; }
+[data-theme="dark"] .nora-ls-step-text strong { color: #f1f5f9; }
+[data-theme="dark"] .nora-ls-message-content { color: #cbd5e1; }
+[data-theme="dark"] .nora-ls-message-bot .nora-ls-message-content { background: rgba(255, 255, 255, 0.05); }
+[data-theme="dark"] .nora-lp-progress { background: rgba(255, 255, 255, 0.05); }
+[data-theme="dark"] .nora-assist-card { background: rgba(30, 41, 59, 0.97); border-color: rgba(139, 92, 246, 0.2); box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25); }
+[data-theme="dark"] .nora-assist-title { color: #e2e8f0; }
+[data-theme="dark"] .nora-assist-item-title { color: #e2e8f0; }
+[data-theme="dark"] .nora-assist-item { border-top-color: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] #nora-step-popover { background: #2e1065; }
+[data-theme="dark"] .nora-pop-arrow { background: #2e1065; }
+[data-theme="dark"] .nora-pop-text { color: #e2e8f0; }
+
+/* ====== RESPONSIVE ====== */
+
+@media (max-width: 768px) {
+  .nora-lp { width: calc(100vw - 32px); max-height: 45vh; left: 16px !important; right: 16px !important; bottom: 16px !important; top: auto !important; }
+}
+
+@media (max-width: 640px) {
+  #nora-assist-panel { top: auto; bottom: 16px; right: 8px; left: 8px; }
+  .nora-assist-card { width: 100%; }
+}
