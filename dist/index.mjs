@@ -1,5 +1,5 @@
 // src/components/NoraLearnProvider.tsx
-import { createContext, useContext, useState as useState3, useEffect as useEffect6, useCallback as useCallback3, useRef as useRef5 } from "react";
+import { createContext, useContext, useState as useState5, useEffect as useEffect7, useCallback as useCallback4, useRef as useRef6 } from "react";
 
 // src/core/api.ts
 var _csrfToken;
@@ -78,6 +78,30 @@ async function cleanupDemoDocuments(learnName) {
     });
   } catch {
   }
+}
+async function startConversation(message, context) {
+  return frappePost(
+    "nora.api.quick_chat.start_conversation",
+    { message, context }
+  );
+}
+async function sendMessageInThread(threadId, message, context) {
+  return frappePost(
+    "nora.api.quick_chat.send_message_in_thread",
+    { thread_id: threadId, message, context }
+  );
+}
+async function getThreadMessages(threadId) {
+  return frappePost(
+    "nora.api.quick_chat.get_thread_messages",
+    { thread_id: threadId }
+  );
+}
+async function getBrowserActions(threadId) {
+  return frappePost(
+    "nora.api.quick_chat.get_browser_actions",
+    { thread_id: threadId }
+  );
 }
 
 // src/core/utils.ts
@@ -1064,6 +1088,7 @@ function useRouteChange(callback) {
 }
 
 // src/components/LearnSidebar.tsx
+import { useState as useState4 } from "react";
 import { createPortal } from "react-dom";
 
 // src/components/StepMessage.tsx
@@ -1128,11 +1153,235 @@ function StepMessage({
   ] });
 }
 
+// src/components/ChatArea.tsx
+import { useState as useState3, useRef as useRef4, useEffect as useEffect5, useCallback as useCallback3 } from "react";
+import { jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
+function ChatArea({
+  isExpanded,
+  learnName,
+  learnTitle,
+  currentStep,
+  stepIndex,
+  totalSteps,
+  noraIconUrl,
+  translateFn
+}) {
+  const __ = (t) => translate(t, translateFn);
+  const [messages, setMessages] = useState3([]);
+  const [isLoading, setIsLoading] = useState3(false);
+  const [threadId, setThreadId] = useState3(null);
+  const knownMsgNames = useRef4(/* @__PURE__ */ new Set());
+  const pollRef = useRef4(null);
+  const pollCountRef = useRef4(0);
+  const textareaRef = useRef4(null);
+  const chatMessagesRef = useRef4(null);
+  useEffect5(() => {
+    if (isExpanded && textareaRef.current) {
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    }
+  }, [isExpanded]);
+  useEffect5(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [messages]);
+  useEffect5(() => {
+    return () => stopPolling();
+  }, []);
+  const stopPolling = useCallback3(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setIsLoading(false);
+  }, []);
+  const startPolling = useCallback3(() => {
+    stopPolling();
+    pollCountRef.current = 0;
+    pollRef.current = setInterval(async () => {
+      pollCountRef.current++;
+      if (pollCountRef.current > 240) {
+        stopPolling();
+        setMessages((prev) => [...prev, {
+          id: `timeout-${Date.now()}`,
+          role: "assistant",
+          text: __("Response is taking too long. Please try again.")
+        }]);
+        return;
+      }
+      if (!threadId) return;
+      try {
+        const result = await getThreadMessages(threadId);
+        if (result.success && result.messages) {
+          for (const msg of result.messages) {
+            if (msg.is_bot && !knownMsgNames.current.has(msg.name)) {
+              knownMsgNames.current.add(msg.name);
+              setMessages((prev) => [...prev, {
+                id: msg.name,
+                role: "assistant",
+                text: msg.text
+              }]);
+              stopPolling();
+              try {
+                const actionsResult = await getBrowserActions(threadId);
+                if (actionsResult.success && actionsResult.actions?.length) {
+                  for (const action of actionsResult.actions) {
+                    await executeAction(action);
+                  }
+                }
+              } catch {
+              }
+            }
+          }
+        }
+      } catch {
+      }
+    }, 500);
+  }, [threadId, stopPolling, __]);
+  const buildContext = useCallback3(() => {
+    const user2 = getCurrentUser();
+    const ctx = {
+      route: window.location.pathname,
+      user: user2.name,
+      user_fullname: user2.fullName
+    };
+    if (currentStep) {
+      ctx.learn_context = {
+        learn_name: learnName,
+        learn_title: learnTitle,
+        current_step: stepIndex,
+        total_steps: totalSteps,
+        step_title: currentStep.title || "",
+        step_action_type: currentStep.action_type || "",
+        step_action_target: currentStep.action_target || ""
+      };
+    }
+    return ctx;
+  }, [currentStep, learnName, learnTitle, stepIndex, totalSteps]);
+  const sendMessage = useCallback3(async (text) => {
+    if (isLoading || !text.trim()) return;
+    setIsLoading(true);
+    setMessages((prev) => [...prev, {
+      id: `user-${Date.now()}`,
+      role: "user",
+      text
+    }]);
+    try {
+      const context = JSON.stringify(buildContext());
+      if (!threadId) {
+        const result = await startConversation(text, context);
+        if (result.success && result.thread_id) {
+          setThreadId(result.thread_id);
+          setTimeout(() => startPolling(), 100);
+        }
+      } else {
+        await sendMessageInThread(threadId, text, context);
+        startPolling();
+      }
+    } catch (e) {
+      console.error("[Nora Learn Chat] error:", e);
+      setMessages((prev) => [...prev, {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        text: __("Sorry, an error occurred. Please try again.")
+      }]);
+      setIsLoading(false);
+    }
+  }, [isLoading, threadId, buildContext, startPolling, __]);
+  useEffect5(() => {
+  }, [threadId, startPolling]);
+  const handleKeyDown = (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+  const handleSend = () => {
+    if (!textareaRef.current) return;
+    const text = textareaRef.current.value.trim();
+    if (!text) return;
+    textareaRef.current.value = "";
+    textareaRef.current.style.height = "auto";
+    sendMessage(text);
+  };
+  const handleInput = () => {
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = "auto";
+    textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 80) + "px";
+  };
+  if (!isExpanded) return null;
+  const user = getCurrentUser();
+  const avatarUrl = getUserAvatarUrl(user.name);
+  return /* @__PURE__ */ jsxs2(
+    "div",
+    {
+      className: "nora-lp-chat-area",
+      onKeyDown: (e) => e.stopPropagation(),
+      onKeyUp: (e) => e.stopPropagation(),
+      children: [
+        /* @__PURE__ */ jsxs2("div", { className: "nora-lp-chat-messages", ref: chatMessagesRef, children: [
+          messages.map((msg) => /* @__PURE__ */ jsxs2("div", { className: `nora-ls-message ${msg.role === "user" ? "nora-ls-message-user" : "nora-ls-message-bot"}`, children: [
+            msg.role === "user" ? /* @__PURE__ */ jsx2("div", { className: "nora-ls-avatar nora-ls-avatar-user", children: avatarUrl ? /* @__PURE__ */ jsx2("img", { src: avatarUrl, alt: user.name }) : /* @__PURE__ */ jsx2("div", { style: { width: 22, height: 22, borderRadius: "50%", background: "#7c3aed", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }, children: user.fullName.charAt(0).toUpperCase() }) }) : /* @__PURE__ */ jsx2("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ jsx2("img", { src: noraIconUrl, alt: "NORA" }) }),
+            /* @__PURE__ */ jsx2(
+              "div",
+              {
+                className: "nora-ls-message-content",
+                dangerouslySetInnerHTML: {
+                  __html: msg.role === "user" ? escapeHtml(msg.text) : msg.text
+                }
+              }
+            )
+          ] }, msg.id)),
+          isLoading && /* @__PURE__ */ jsxs2("div", { className: "nora-ls-message nora-ls-message-bot nora-ls-typing", children: [
+            /* @__PURE__ */ jsx2("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ jsx2("img", { src: noraIconUrl, alt: "NORA" }) }),
+            /* @__PURE__ */ jsxs2("div", { className: "nora-ls-message-content nora-ls-typing-dots", children: [
+              /* @__PURE__ */ jsx2("span", {}),
+              /* @__PURE__ */ jsx2("span", {}),
+              /* @__PURE__ */ jsx2("span", {})
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs2("div", { className: "nora-lp-input-wrapper", children: [
+          /* @__PURE__ */ jsx2(
+            "textarea",
+            {
+              ref: textareaRef,
+              className: "nora-lp-textarea",
+              placeholder: __("Ask NORA anything..."),
+              rows: 1,
+              onKeyDown: handleKeyDown,
+              onInput: handleInput
+            }
+          ),
+          /* @__PURE__ */ jsx2(
+            "button",
+            {
+              className: "nora-lp-send",
+              title: __("Send"),
+              disabled: isLoading,
+              onClick: (e) => {
+                e.stopPropagation();
+                handleSend();
+              },
+              children: /* @__PURE__ */ jsxs2("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: [
+                /* @__PURE__ */ jsx2("line", { x1: "22", y1: "2", x2: "11", y2: "13" }),
+                /* @__PURE__ */ jsx2("polygon", { points: "22 2 15 22 11 13 2 9 22 2" })
+              ] })
+            }
+          )
+        ] })
+      ]
+    }
+  );
+}
+
 // src/components/LearnSidebar.tsx
-import { Fragment, jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
+import { Fragment, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 function LearnSidebar({
   isOpen,
   title,
+  learnName,
   stepIndex,
   totalSteps,
   currentStep,
@@ -1151,6 +1400,7 @@ function LearnSidebar({
   onValidationFail
 }) {
   const __ = (t) => translate(t, translateFn);
+  const [chatExpanded, setChatExpanded] = useState4(false);
   if (!isOpen) return null;
   const pos = computePosition(highlightRect);
   const progress = totalSteps > 0 ? Math.round((stepIndex + 1) / totalSteps * 100) : 0;
@@ -1163,7 +1413,7 @@ function LearnSidebar({
     has_execute_actions: !!currentStep.execute_actions?.length,
     has_wait_condition: !!currentStep.wait_condition
   } : null;
-  const sidebar = /* @__PURE__ */ jsxs2(
+  const sidebar = /* @__PURE__ */ jsxs3(
     "div",
     {
       className: `nora-lp nora-lp-${pos.h} nora-lp-${pos.v}`,
@@ -1171,12 +1421,13 @@ function LearnSidebar({
       onClick: (e) => e.stopPropagation(),
       onKeyDown: (e) => e.stopPropagation(),
       onKeyUp: (e) => e.stopPropagation(),
+      onKeyPress: (e) => e.stopPropagation(),
       children: [
-        /* @__PURE__ */ jsxs2("div", { className: "nora-lp-header", children: [
-          /* @__PURE__ */ jsx2("img", { className: "nora-lp-icon", src: noraIconUrl, alt: "NORA" }),
-          /* @__PURE__ */ jsxs2("div", { className: "nora-lp-header-text", children: [
-            /* @__PURE__ */ jsx2("span", { className: "nora-lp-title", children: escapeHtml(title) }),
-            /* @__PURE__ */ jsxs2("span", { className: "nora-lp-step", children: [
+        /* @__PURE__ */ jsxs3("div", { className: "nora-lp-header", children: [
+          /* @__PURE__ */ jsx3("img", { className: "nora-lp-icon", src: noraIconUrl, alt: "NORA" }),
+          /* @__PURE__ */ jsxs3("div", { className: "nora-lp-header-text", children: [
+            /* @__PURE__ */ jsx3("span", { className: "nora-lp-title", children: escapeHtml(title) }),
+            /* @__PURE__ */ jsxs3("span", { className: "nora-lp-step", children: [
               __("Step"),
               " ",
               stepIndex + 1,
@@ -1184,14 +1435,14 @@ function LearnSidebar({
               totalSteps
             ] })
           ] }),
-          /* @__PURE__ */ jsxs2("div", { className: "nora-lp-header-actions", children: [
-            /* @__PURE__ */ jsx2("button", { className: "nora-lp-btn", title: __("Restart"), onClick: onRestart, children: "\u21BA" }),
-            /* @__PURE__ */ jsx2("button", { className: "nora-lp-btn", title: __("Finish"), onClick: onFinish, children: "\u2713" }),
-            /* @__PURE__ */ jsx2("button", { className: "nora-lp-btn", title: __("Close"), onClick: onClose, children: "\u2715" })
+          /* @__PURE__ */ jsxs3("div", { className: "nora-lp-header-actions", children: [
+            /* @__PURE__ */ jsx3("button", { className: "nora-lp-btn", title: __("Restart"), onClick: onRestart, children: "\u21BA" }),
+            /* @__PURE__ */ jsx3("button", { className: "nora-lp-btn", title: __("Finish"), onClick: onFinish, children: "\u2713" }),
+            /* @__PURE__ */ jsx3("button", { className: "nora-lp-btn close-popup", title: __("Close"), onClick: onClose, children: "\u2715" })
           ] })
         ] }),
-        /* @__PURE__ */ jsx2("div", { className: "nora-lp-progress", children: /* @__PURE__ */ jsx2("div", { className: "nora-lp-progress-bar", style: { width: `${progress}%` } }) }),
-        /* @__PURE__ */ jsx2("div", { className: "nora-lp-messages", children: isCompleted ? /* @__PURE__ */ jsx2(
+        /* @__PURE__ */ jsx3("div", { className: "nora-lp-progress", children: /* @__PURE__ */ jsx3("div", { className: "nora-lp-progress-bar", style: { width: `${progress}%` } }) }),
+        /* @__PURE__ */ jsx3("div", { className: "nora-lp-messages", children: isCompleted ? /* @__PURE__ */ jsx3(
           CompletionMessage,
           {
             __,
@@ -1201,7 +1452,7 @@ function LearnSidebar({
             onClose,
             noraIconUrl
           }
-        ) : stepMessageData ? /* @__PURE__ */ jsx2(
+        ) : stepMessageData ? /* @__PURE__ */ jsx3(
           StepMessage,
           {
             data: stepMessageData,
@@ -1212,7 +1463,31 @@ function LearnSidebar({
             validationErrorMessage: currentStep?.on_error_message,
             translateFn
           }
-        ) : null })
+        ) : null }),
+        !isCompleted && /* @__PURE__ */ jsx3("div", { className: "nora-lp-chat-toggle", children: /* @__PURE__ */ jsx3(
+          "button",
+          {
+            className: "nora-lp-btn nora-lp-chat-btn",
+            onClick: (e) => {
+              e.stopPropagation();
+              setChatExpanded(!chatExpanded);
+            },
+            children: chatExpanded ? __("Hide chat") + " \u2715" : __("Ask NORA") + " \u{1F4AC}"
+          }
+        ) }),
+        !isCompleted && /* @__PURE__ */ jsx3(
+          ChatArea,
+          {
+            isExpanded: chatExpanded,
+            learnName,
+            learnTitle: title,
+            currentStep,
+            stepIndex,
+            totalSteps,
+            noraIconUrl,
+            translateFn
+          }
+        )
       ]
     }
   );
@@ -1226,33 +1501,23 @@ function CompletionMessage({
   onClose,
   noraIconUrl
 }) {
-  return /* @__PURE__ */ jsxs2(Fragment, { children: [
-    /* @__PURE__ */ jsxs2("div", { className: "nora-ls-message nora-ls-message-bot", children: [
-      /* @__PURE__ */ jsx2("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ jsx2("img", { src: noraIconUrl, alt: "NORA" }) }),
-      /* @__PURE__ */ jsxs2("div", { className: "nora-ls-message-content", children: [
-        "\u{1F389} ",
+  return /* @__PURE__ */ jsxs3(Fragment, { children: [
+    /* @__PURE__ */ jsxs3("div", { className: "nora-ls-message nora-ls-message-bot", children: [
+      /* @__PURE__ */ jsx3("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ jsx3("img", { src: noraIconUrl, alt: "NORA" }) }),
+      /* @__PURE__ */ jsxs3("div", { className: "nora-ls-message-content", children: [
+        "\u{1F389}",
+        " ",
         __("Congratulations! You have completed this learn.")
       ] })
     ] }),
-    nextLearn && onNextLearn && /* @__PURE__ */ jsxs2("div", { style: { marginTop: 10 }, children: [
-      /* @__PURE__ */ jsx2("strong", { children: __("Next recommended learn:") }),
-      /* @__PURE__ */ jsx2("br", {}),
-      /* @__PURE__ */ jsxs2(
+    nextLearn && onNextLearn && /* @__PURE__ */ jsxs3("div", { style: { marginTop: 10 }, children: [
+      /* @__PURE__ */ jsx3("strong", { children: __("Next recommended learn:") }),
+      /* @__PURE__ */ jsx3("br", {}),
+      /* @__PURE__ */ jsxs3(
         "button",
         {
-          style: {
-            marginTop: 8,
-            background: "#7c3aed",
-            borderColor: "#7c3aed",
-            color: "white",
-            width: "100%",
-            padding: "6px 12px",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: 12
-          },
+          className: "nora-ls-btn nora-ls-continue",
+          style: { marginTop: 8, width: "100%" },
           onClick: () => onNextLearn(nextLearn),
           children: [
             nextLearnTitle || nextLearn,
@@ -1260,19 +1525,11 @@ function CompletionMessage({
           ]
         }
       ),
-      /* @__PURE__ */ jsx2(
+      /* @__PURE__ */ jsx3(
         "button",
         {
-          style: {
-            marginTop: 6,
-            width: "100%",
-            padding: "6px 12px",
-            background: "rgba(0,0,0,0.05)",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontSize: 12
-          },
+          className: "nora-ls-btn",
+          style: { marginTop: 6, width: "100%", background: "rgba(0,0,0,0.05)", color: "#64748b" },
           onClick: onClose,
           children: __("Close")
         }
@@ -1294,7 +1551,7 @@ function computePosition(targetRect) {
 
 // src/components/LearnPopup.tsx
 import { createPortal as createPortal2 } from "react-dom";
-import { jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
+import { jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
 function LearnPopup({
   learns,
   routeStr,
@@ -1308,13 +1565,13 @@ function LearnPopup({
   const MAX_VISIBLE = 2;
   const matchNames = learns.map((l) => l.name);
   const title = learns.length > 1 ? __("Formations disponibles") + ` (${learns.length})` : __("Formation disponible");
-  const popup = /* @__PURE__ */ jsx3("div", { id: "nora-assist-panel", children: /* @__PURE__ */ jsxs3("div", { className: "nora-assist-card", role: "status", children: [
-    /* @__PURE__ */ jsxs3("div", { className: "nora-assist-header", children: [
-      /* @__PURE__ */ jsxs3("div", { className: "nora-assist-header-left", children: [
-        /* @__PURE__ */ jsx3("span", { className: "nora-assist-indicator" }),
-        /* @__PURE__ */ jsx3("span", { className: "nora-assist-title", children: title })
+  const popup = /* @__PURE__ */ jsx4("div", { id: "nora-assist-panel", children: /* @__PURE__ */ jsxs4("div", { className: "nora-assist-card", role: "status", children: [
+    /* @__PURE__ */ jsxs4("div", { className: "nora-assist-header", children: [
+      /* @__PURE__ */ jsxs4("div", { className: "nora-assist-header-left", children: [
+        /* @__PURE__ */ jsx4("span", { className: "nora-assist-indicator" }),
+        /* @__PURE__ */ jsx4("span", { className: "nora-assist-title", children: title })
       ] }),
-      /* @__PURE__ */ jsx3(
+      /* @__PURE__ */ jsx4(
         "button",
         {
           className: "nora-assist-close",
@@ -1324,29 +1581,29 @@ function LearnPopup({
         }
       )
     ] }),
-    /* @__PURE__ */ jsx3("div", { className: "nora-assist-items", children: learns.map((learn, idx) => {
+    /* @__PURE__ */ jsx4("div", { className: "nora-assist-items", children: learns.map((learn, idx) => {
       const isHidden = idx >= MAX_VISIBLE;
       const hasUnmetPrereq = (learn.prerequisites || []).some((p) => matchNames.includes(p));
       const btnLabel = learn.in_progress ? __("Reprendre") : __("Commencer");
-      return /* @__PURE__ */ jsxs3(
+      return /* @__PURE__ */ jsxs4(
         "div",
         {
           className: `nora-assist-item${hasUnmetPrereq ? " nora-assist-item-disabled" : ""}${isHidden ? " nora-assist-item-overflow" : ""}`,
           "data-learn": learn.name,
           style: isHidden ? { display: "none" } : void 0,
           children: [
-            /* @__PURE__ */ jsxs3("div", { className: "nora-assist-item-row", children: [
-              /* @__PURE__ */ jsxs3("div", { className: "nora-assist-item-info", children: [
-                /* @__PURE__ */ jsx3("span", { className: "nora-assist-item-title", children: escapeHtml(learn.title) }),
-                /* @__PURE__ */ jsxs3("span", { className: "nora-assist-item-meta", children: [
-                  learn.in_progress && /* @__PURE__ */ jsx3("span", { className: "nora-assist-item-badge", children: __("En cours") }),
-                  learn.estimated_duration && /* @__PURE__ */ jsxs3("span", { className: "nora-assist-item-duration", children: [
+            /* @__PURE__ */ jsxs4("div", { className: "nora-assist-item-row", children: [
+              /* @__PURE__ */ jsxs4("div", { className: "nora-assist-item-info", children: [
+                /* @__PURE__ */ jsx4("span", { className: "nora-assist-item-title", children: escapeHtml(learn.title) }),
+                /* @__PURE__ */ jsxs4("span", { className: "nora-assist-item-meta", children: [
+                  learn.in_progress && /* @__PURE__ */ jsx4("span", { className: "nora-assist-item-badge", children: __("En cours") }),
+                  learn.estimated_duration && /* @__PURE__ */ jsxs4("span", { className: "nora-assist-item-duration", children: [
                     learn.estimated_duration,
                     " min"
                   ] })
                 ] })
               ] }),
-              /* @__PURE__ */ jsx3(
+              /* @__PURE__ */ jsx4(
                 "button",
                 {
                   className: "nora-assist-dismiss-one",
@@ -1359,13 +1616,13 @@ function LearnPopup({
                 }
               )
             ] }),
-            hasUnmetPrereq && learn.prerequisite_titles?.length > 0 && /* @__PURE__ */ jsxs3("div", { className: "nora-assist-item-prereq", children: [
+            hasUnmetPrereq && learn.prerequisite_titles?.length > 0 && /* @__PURE__ */ jsxs4("div", { className: "nora-assist-item-prereq", children: [
               __("Faire d'abord"),
               " :",
               " ",
-              learn.prerequisite_titles.map((p) => /* @__PURE__ */ jsx3("em", { children: escapeHtml(p.title) }, p.name))
+              learn.prerequisite_titles.map((p) => /* @__PURE__ */ jsx4("em", { children: escapeHtml(p.title) }, p.name))
             ] }),
-            /* @__PURE__ */ jsx3("div", { className: "nora-assist-item-actions", children: hasUnmetPrereq ? /* @__PURE__ */ jsx3("button", { className: "btn btn-xs btn-default", disabled: true, children: __("Commencer") }) : /* @__PURE__ */ jsx3(
+            /* @__PURE__ */ jsx4("div", { className: "nora-assist-item-actions", children: hasUnmetPrereq ? /* @__PURE__ */ jsx4("button", { className: "btn btn-xs btn-default", disabled: true, children: __("Commencer") }) : /* @__PURE__ */ jsx4(
               "button",
               {
                 className: "btn btn-xs btn-primary nora-assist-start",
@@ -1378,7 +1635,7 @@ function LearnPopup({
         learn.name
       );
     }) }),
-    /* @__PURE__ */ jsx3("div", { className: "nora-assist-footer", children: /* @__PURE__ */ jsx3(
+    /* @__PURE__ */ jsx4("div", { className: "nora-assist-footer", children: /* @__PURE__ */ jsx4(
       "button",
       {
         className: "btn btn-xs btn-default nora-assist-snooze",
@@ -1391,22 +1648,22 @@ function LearnPopup({
 }
 
 // src/components/StepPopover.tsx
-import { useEffect as useEffect5, useRef as useRef4 } from "react";
+import { useEffect as useEffect6, useRef as useRef5 } from "react";
 import { createPortal as createPortal3 } from "react-dom";
-import { jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+import { jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
 function StepPopover({ element, step, stepIndex, totalSteps, translateFn }) {
   const __ = (t) => translate(t, translateFn);
-  const popRef = useRef4(null);
-  useEffect5(() => {
+  const popRef = useRef5(null);
+  useEffect6(() => {
     if (!popRef.current || !element) return;
     positionPopover(popRef.current, element);
   }, [element, step]);
   if (!element) return null;
   const badge = `${__("Step")} ${stepIndex + 1}/${totalSteps}`;
-  const popover = /* @__PURE__ */ jsxs4("div", { ref: popRef, id: "nora-step-popover", className: "nora-pop-bottom", children: [
-    /* @__PURE__ */ jsx4("div", { className: "nora-pop-arrow" }),
-    /* @__PURE__ */ jsx4("div", { className: "nora-pop-badge", children: badge }),
-    /* @__PURE__ */ jsx4(
+  const popover = /* @__PURE__ */ jsxs5("div", { ref: popRef, id: "nora-step-popover", className: "nora-pop-bottom", children: [
+    /* @__PURE__ */ jsx5("div", { className: "nora-pop-arrow" }),
+    /* @__PURE__ */ jsx5("div", { className: "nora-pop-badge", children: badge }),
+    /* @__PURE__ */ jsx5(
       "div",
       {
         className: "nora-pop-text",
@@ -1465,7 +1722,7 @@ function positionPopover(pop, element) {
 
 // src/components/PrerequisiteDialog.tsx
 import { createPortal as createPortal4 } from "react-dom";
-import { jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
+import { jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
 function PrerequisiteDialog({
   isOpen,
   prerequisites,
@@ -1475,7 +1732,7 @@ function PrerequisiteDialog({
 }) {
   const __ = (t) => translate(t, translateFn);
   if (!isOpen || !prerequisites.length) return null;
-  const dialog = /* @__PURE__ */ jsx5(
+  const dialog = /* @__PURE__ */ jsx6(
     "div",
     {
       style: {
@@ -1489,7 +1746,7 @@ function PrerequisiteDialog({
         backdropFilter: "blur(4px)"
       },
       onClick: onContinue,
-      children: /* @__PURE__ */ jsxs5(
+      children: /* @__PURE__ */ jsxs6(
         "div",
         {
           style: {
@@ -1502,11 +1759,11 @@ function PrerequisiteDialog({
           },
           onClick: (e) => e.stopPropagation(),
           children: [
-            /* @__PURE__ */ jsx5("h3", { style: { margin: "0 0 12px", fontSize: 16, fontWeight: 600 }, children: __("Recommended Prerequisites") }),
-            /* @__PURE__ */ jsx5("p", { style: { margin: "0 0 12px", fontSize: 13, color: "#64748b" }, children: __("We recommend completing these formations first:") }),
-            /* @__PURE__ */ jsx5("ul", { style: { margin: "0 0 16px", paddingLeft: 20 }, children: prerequisites.map((p) => /* @__PURE__ */ jsx5("li", { style: { padding: "4px 0", fontWeight: 600 }, children: escapeHtml(p.title) }, p.name)) }),
-            /* @__PURE__ */ jsxs5("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
-              /* @__PURE__ */ jsx5(
+            /* @__PURE__ */ jsx6("h3", { style: { margin: "0 0 12px", fontSize: 16, fontWeight: 600 }, children: __("Recommended Prerequisites") }),
+            /* @__PURE__ */ jsx6("p", { style: { margin: "0 0 12px", fontSize: 13, color: "#64748b" }, children: __("We recommend completing these formations first:") }),
+            /* @__PURE__ */ jsx6("ul", { style: { margin: "0 0 16px", paddingLeft: 20 }, children: prerequisites.map((p) => /* @__PURE__ */ jsx6("li", { style: { padding: "4px 0", fontWeight: 600 }, children: escapeHtml(p.title) }, p.name)) }),
+            /* @__PURE__ */ jsxs6("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
+              /* @__PURE__ */ jsx6(
                 "button",
                 {
                   style: {
@@ -1521,7 +1778,7 @@ function PrerequisiteDialog({
                   children: __("Do it first")
                 }
               ),
-              /* @__PURE__ */ jsx5(
+              /* @__PURE__ */ jsx6(
                 "button",
                 {
                   style: {
@@ -1548,7 +1805,7 @@ function PrerequisiteDialog({
 }
 
 // src/components/NoraLearnProvider.tsx
-import { jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
+import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 var NoraLearnContext = createContext({
   startLearn: async () => false,
   stopLearn: () => {
@@ -1559,20 +1816,20 @@ function useNoraLearn() {
   return useContext(NoraLearnContext);
 }
 function NoraLearnProvider({ config = {}, children }) {
-  const [currentRoute, setCurrentRoute] = useState3(
+  const [currentRoute, setCurrentRoute] = useState5(
     () => (config.getCurrentRoute || (() => window.location.pathname))()
   );
-  const [showPopup, setShowPopup] = useState3(false);
-  const popupTimerRef = useRef5(null);
-  const [prereqDialog, setPrereqDialog] = useState3({ open: false, prerequisites: [], learnName: "" });
-  useEffect6(() => {
+  const [showPopup, setShowPopup] = useState5(false);
+  const popupTimerRef = useRef6(null);
+  const [prereqDialog, setPrereqDialog] = useState5({ open: false, prerequisites: [], learnName: "" });
+  useEffect7(() => {
     if (config.csrfToken) setCsrfToken(config.csrfToken);
     else if (window.csrf_token) setCsrfToken(window.csrf_token);
   }, [config.csrfToken]);
   const session = useLearnSession(config);
   const { matchingLearns, dismissLearn, snoozeRoute, refreshLearns } = useAvailableLearns(currentRoute);
   useRouteChange(
-    useCallback3(
+    useCallback4(
       (path) => {
         setCurrentRoute(path);
         setShowPopup(false);
@@ -1584,11 +1841,11 @@ function NoraLearnProvider({ config = {}, children }) {
       []
     )
   );
-  useEffect6(() => {
+  useEffect7(() => {
     const timer = setTimeout(() => setShowPopup(true), 2e3);
     return () => clearTimeout(timer);
   }, []);
-  useEffect6(() => {
+  useEffect7(() => {
     const saved = LearnSession.getSavedState();
     if (saved && !session.isActive) {
       session.resumeLearn(saved.learn_name).then((ok) => {
@@ -1596,7 +1853,7 @@ function NoraLearnProvider({ config = {}, children }) {
       });
     }
   }, []);
-  const handleStartLearn = useCallback3(
+  const handleStartLearn = useCallback4(
     async (name, skipPrerequisites = false) => {
       setShowPopup(false);
       const ok = await session.startLearn(name, skipPrerequisites);
@@ -1611,36 +1868,36 @@ function NoraLearnProvider({ config = {}, children }) {
     },
     [session]
   );
-  const handleStopLearn = useCallback3(() => {
+  const handleStopLearn = useCallback4(() => {
     session.stopLearn();
   }, [session]);
-  const handleNextLearn = useCallback3(
+  const handleNextLearn = useCallback4(
     async (name) => {
       session.resetCompleted();
       await handleStartLearn(name, true);
     },
     [session, handleStartLearn]
   );
-  const handleValidationFail = useCallback3(
+  const handleValidationFail = useCallback4(
     (message) => {
       const showAlert = config.showAlert || ((msg) => console.warn("[Nora Learn]", msg));
       showAlert(message, "warning");
     },
     [config.showAlert]
   );
-  const handleComplete = useCallback3(() => {
+  const handleComplete = useCallback4(() => {
     const showAlert = config.showAlert || ((msg) => console.log("[Nora Learn]", msg));
     showAlert("Learn completed!", "success");
     refreshLearns();
   }, [config.showAlert, refreshLearns]);
-  useEffect6(() => {
+  useEffect7(() => {
     if (session.isCompleted) {
       handleComplete();
     }
   }, [session.isCompleted, handleComplete]);
   const showStepPopover = session.isActive && session.popoverElement && session.popoverStep && session.popoverStep.highlight_actions?.length;
   const sidebarTitle = session.state?.title || session.state?.learn_title || "";
-  return /* @__PURE__ */ jsxs6(
+  return /* @__PURE__ */ jsxs7(
     NoraLearnContext.Provider,
     {
       value: {
@@ -1650,7 +1907,7 @@ function NoraLearnProvider({ config = {}, children }) {
       },
       children: [
         children,
-        showPopup && !session.isActive && !session.isCompleted && matchingLearns.length > 0 && /* @__PURE__ */ jsx6(
+        showPopup && !session.isActive && !session.isCompleted && matchingLearns.length > 0 && /* @__PURE__ */ jsx7(
           LearnPopup,
           {
             learns: matchingLearns,
@@ -1661,11 +1918,12 @@ function NoraLearnProvider({ config = {}, children }) {
             onSnooze: snoozeRoute
           }
         ),
-        /* @__PURE__ */ jsx6(
+        /* @__PURE__ */ jsx7(
           LearnSidebar,
           {
             isOpen: session.isActive || session.isCompleted,
             title: sidebarTitle,
+            learnName: session.state?.learn_name || "",
             stepIndex: session.stepIndex,
             totalSteps: session.totalSteps,
             currentStep: session.currentStep,
@@ -1684,7 +1942,7 @@ function NoraLearnProvider({ config = {}, children }) {
             onValidationFail: handleValidationFail
           }
         ),
-        showStepPopover && /* @__PURE__ */ jsx6(
+        showStepPopover && /* @__PURE__ */ jsx7(
           StepPopover,
           {
             element: session.popoverElement,
@@ -1694,7 +1952,7 @@ function NoraLearnProvider({ config = {}, children }) {
             translateFn: config.translate
           }
         ),
-        /* @__PURE__ */ jsx6(
+        /* @__PURE__ */ jsx7(
           PrerequisiteDialog,
           {
             isOpen: prereqDialog.open,
@@ -1712,6 +1970,7 @@ function NoraLearnProvider({ config = {}, children }) {
   );
 }
 export {
+  ChatArea,
   LearnPopup,
   LearnSession,
   LearnSidebar,
@@ -1727,17 +1986,21 @@ export {
   executeMany,
   findVisibleElement,
   getAvailableLearns,
+  getBrowserActions,
   getCurrentUser,
   getLearnState,
   getStepAsMessage,
+  getThreadMessages,
   getUserAvatarUrl,
   highlight,
   pauseLearn,
   removeHighlight,
   renderMarkdown,
   resetLearn,
+  sendMessageInThread,
   setCsrfToken,
   sleep,
+  startConversation,
   startLearn,
   translate,
   useAvailableLearns,

@@ -5,6 +5,7 @@ export { LearnPopup } from './components/LearnPopup'
 export { StepPopover } from './components/StepPopover'
 export { StepMessage } from './components/StepMessage'
 export { PrerequisiteDialog } from './components/PrerequisiteDialog'
+export { ChatArea } from './components/ChatArea'
 
 // Hooks
 export { useLearnSession } from './hooks/useLearnSession'

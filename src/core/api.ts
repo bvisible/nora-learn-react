@@ -105,3 +105,55 @@ export async function cleanupDemoDocuments(learnName: string): Promise<void> {
     // Fire-and-forget
   }
 }
+
+// ========== Quick Chat API (OpenClaw) ==========
+
+export interface ChatMessage {
+  name: string
+  text: string
+  is_bot: boolean
+}
+
+export interface BrowserActionFromChat {
+  action: string
+  [key: string]: unknown
+}
+
+export async function startConversation(
+  message: string,
+  context: string
+): Promise<{ success: boolean; thread_id?: string }> {
+  return frappePost<{ success: boolean; thread_id?: string }>(
+    'nora.api.quick_chat.start_conversation',
+    { message, context }
+  )
+}
+
+export async function sendMessageInThread(
+  threadId: string,
+  message: string,
+  context: string
+): Promise<{ success: boolean }> {
+  return frappePost<{ success: boolean }>(
+    'nora.api.quick_chat.send_message_in_thread',
+    { thread_id: threadId, message, context }
+  )
+}
+
+export async function getThreadMessages(
+  threadId: string
+): Promise<{ success: boolean; messages: ChatMessage[] }> {
+  return frappePost<{ success: boolean; messages: ChatMessage[] }>(
+    'nora.api.quick_chat.get_thread_messages',
+    { thread_id: threadId }
+  )
+}
+
+export async function getBrowserActions(
+  threadId: string
+): Promise<{ success: boolean; actions: BrowserActionFromChat[] }> {
+  return frappePost<{ success: boolean; actions: BrowserActionFromChat[] }>(
+    'nora.api.quick_chat.get_browser_actions',
+    { thread_id: threadId }
+  )
+}

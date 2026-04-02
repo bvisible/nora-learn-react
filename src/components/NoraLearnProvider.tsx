@@ -179,6 +179,7 @@ export function NoraLearnProvider({ config = {}, children }: NoraLearnProviderPr
       <LearnSidebar
         isOpen={session.isActive || session.isCompleted}
         title={sidebarTitle}
+        learnName={session.state?.learn_name || ''}
         stepIndex={session.stepIndex}
         totalSteps={session.totalSteps}
         currentStep={session.currentStep}

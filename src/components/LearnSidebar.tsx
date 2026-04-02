@@ -1,12 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { StepData, StepMessageData } from '../core/types'
-import { translate, escapeHtml, getUserAvatarUrl, getCurrentUser } from '../core/utils'
+import { translate, escapeHtml } from '../core/utils'
 import { StepMessage } from './StepMessage'
+import { ChatArea } from './ChatArea'
 
 interface LearnSidebarProps {
   isOpen: boolean
   title: string
+  learnName: string
   stepIndex: number
   totalSteps: number
   currentStep: StepData | null
@@ -28,6 +30,7 @@ interface LearnSidebarProps {
 export function LearnSidebar({
   isOpen,
   title,
+  learnName,
   stepIndex,
   totalSteps,
   currentStep,
@@ -46,10 +49,10 @@ export function LearnSidebar({
   onValidationFail,
 }: LearnSidebarProps) {
   const __ = (t: string) => translate(t, translateFn)
+  const [chatExpanded, setChatExpanded] = useState(false)
 
   if (!isOpen) return null
 
-  // Compute position based on highlighted element
   const pos = computePosition(highlightRect)
   const progress = totalSteps > 0 ? Math.round(((stepIndex + 1) / totalSteps) * 100) : 0
 
@@ -72,6 +75,7 @@ export function LearnSidebar({
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       onKeyUp={(e) => e.stopPropagation()}
+      onKeyPress={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="nora-lp-header">
@@ -85,7 +89,7 @@ export function LearnSidebar({
         <div className="nora-lp-header-actions">
           <button className="nora-lp-btn" title={__('Restart')} onClick={onRestart}>↺</button>
           <button className="nora-lp-btn" title={__('Finish')} onClick={onFinish}>✓</button>
-          <button className="nora-lp-btn" title={__('Close')} onClick={onClose}>✕</button>
+          <button className="nora-lp-btn close-popup" title={__('Close')} onClick={onClose}>✕</button>
         </div>
       </div>
 
@@ -117,6 +121,32 @@ export function LearnSidebar({
           />
         ) : null}
       </div>
+
+      {/* Chat toggle — exact same as original */}
+      {!isCompleted && (
+        <div className="nora-lp-chat-toggle">
+          <button
+            className="nora-lp-btn nora-lp-chat-btn"
+            onClick={(e) => { e.stopPropagation(); setChatExpanded(!chatExpanded) }}
+          >
+            {chatExpanded ? __('Hide chat') + ' \u2715' : __('Ask NORA') + ' \uD83D\uDCAC'}
+          </button>
+        </div>
+      )}
+
+      {/* Chat area */}
+      {!isCompleted && (
+        <ChatArea
+          isExpanded={chatExpanded}
+          learnName={learnName}
+          learnTitle={title}
+          currentStep={currentStep}
+          stepIndex={stepIndex}
+          totalSteps={totalSteps}
+          noraIconUrl={noraIconUrl}
+          translateFn={translateFn}
+        />
+      )}
     </div>
   )
 
@@ -147,7 +177,7 @@ function CompletionMessage({
           <img src={noraIconUrl} alt="NORA" />
         </div>
         <div className="nora-ls-message-content">
-          🎉 {__('Congratulations! You have completed this learn.')}
+          {'\uD83C\uDF89'} {__('Congratulations! You have completed this learn.')}
         </div>
       </div>
       {nextLearn && onNextLearn && (
@@ -155,34 +185,15 @@ function CompletionMessage({
           <strong>{__('Next recommended learn:')}</strong>
           <br />
           <button
-            style={{
-              marginTop: 8,
-              background: '#7c3aed',
-              borderColor: '#7c3aed',
-              color: 'white',
-              width: '100%',
-              padding: '6px 12px',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 12,
-            }}
+            className="nora-ls-btn nora-ls-continue"
+            style={{ marginTop: 8, width: '100%' }}
             onClick={() => onNextLearn(nextLearn)}
           >
             {nextLearnTitle || nextLearn} ▸
           </button>
           <button
-            style={{
-              marginTop: 6,
-              width: '100%',
-              padding: '6px 12px',
-              background: 'rgba(0,0,0,0.05)',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontSize: 12,
-            }}
+            className="nora-ls-btn"
+            style={{ marginTop: 6, width: '100%', background: 'rgba(0,0,0,0.05)', color: '#64748b' }}
             onClick={onClose}
           >
             {__('Close')}

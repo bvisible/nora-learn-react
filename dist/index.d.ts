@@ -177,6 +177,7 @@ declare function NoraLearnProvider({ config, children }: NoraLearnProviderProps)
 interface LearnSidebarProps {
     isOpen: boolean;
     title: string;
+    learnName: string;
     stepIndex: number;
     totalSteps: number;
     currentStep: StepData | null;
@@ -194,7 +195,7 @@ interface LearnSidebarProps {
     onNextLearn?: (name: string) => void;
     onValidationFail?: (message: string) => void;
 }
-declare function LearnSidebar({ isOpen, title, stepIndex, totalSteps, currentStep, highlightRect, isCompleted, nextLearn, nextLearnTitle, noraIconUrl, translateFn, onClose, onFinish, onRestart, onDoIt, onContinue, onNextLearn, onValidationFail, }: LearnSidebarProps): React.ReactPortal | null;
+declare function LearnSidebar({ isOpen, title, learnName, stepIndex, totalSteps, currentStep, highlightRect, isCompleted, nextLearn, nextLearnTitle, noraIconUrl, translateFn, onClose, onFinish, onRestart, onDoIt, onContinue, onNextLearn, onValidationFail, }: LearnSidebarProps): React.ReactPortal | null;
 
 interface LearnPopupProps {
     learns: LearnInfo[];
@@ -237,6 +238,18 @@ interface PrerequisiteDialogProps {
     onDoPrerequisite: (name: string) => void;
 }
 declare function PrerequisiteDialog({ isOpen, prerequisites, translateFn, onContinue, onDoPrerequisite, }: PrerequisiteDialogProps): React.ReactPortal | null;
+
+interface ChatAreaProps {
+    isExpanded: boolean;
+    learnName: string;
+    learnTitle: string;
+    currentStep: StepData | null;
+    stepIndex: number;
+    totalSteps: number;
+    noraIconUrl: string;
+    translateFn?: (text: string) => string;
+}
+declare function ChatArea({ isExpanded, learnName, learnTitle, currentStep, stepIndex, totalSteps, noraIconUrl, translateFn, }: ChatAreaProps): react_jsx_runtime.JSX.Element | null;
 
 type EventHandler = (event: SessionEvent) => void;
 /**
@@ -350,6 +363,30 @@ declare function getAvailableLearns(): Promise<{
     learns: LearnInfo[];
 }>;
 declare function cleanupDemoDocuments(learnName: string): Promise<void>;
+interface ChatMessage {
+    name: string;
+    text: string;
+    is_bot: boolean;
+}
+interface BrowserActionFromChat {
+    action: string;
+    [key: string]: unknown;
+}
+declare function startConversation(message: string, context: string): Promise<{
+    success: boolean;
+    thread_id?: string;
+}>;
+declare function sendMessageInThread(threadId: string, message: string, context: string): Promise<{
+    success: boolean;
+}>;
+declare function getThreadMessages(threadId: string): Promise<{
+    success: boolean;
+    messages: ChatMessage[];
+}>;
+declare function getBrowserActions(threadId: string): Promise<{
+    success: boolean;
+    actions: BrowserActionFromChat[];
+}>;
 
 declare function escapeHtml(text: string): string;
 declare function sleep(ms: number): Promise<void>;
@@ -395,4 +432,4 @@ declare function executeAction(action: BrowserAction): Promise<void>;
  */
 declare function executeMany(actions: BrowserAction[]): Promise<void>;
 
-export { type AdvanceResult, type BrowserAction, type HighlightAction, type LearnInfo, LearnPopup, LearnSession, LearnSidebar, type LearnState, type NoraLearnConfig, NoraLearnProvider, PrerequisiteDialog, type SavedLearnState, type SessionEvent, type StepData, StepMessage, type StepMessageData, StepPopover, advanceStep, cleanupDemoDocuments, completeLearn, escapeHtml, executeAction, executeMany, findVisibleElement, getAvailableLearns, getCurrentUser, getLearnState, getStepAsMessage, getUserAvatarUrl, highlight, pauseLearn, removeHighlight, renderMarkdown, resetLearn, setCsrfToken, sleep, startLearn, translate, useAvailableLearns, useLearnSession, useNoraLearn, useRouteChange };
+export { type AdvanceResult, type BrowserAction, type BrowserActionFromChat, ChatArea, type ChatMessage, type HighlightAction, type LearnInfo, LearnPopup, LearnSession, LearnSidebar, type LearnState, type NoraLearnConfig, NoraLearnProvider, PrerequisiteDialog, type SavedLearnState, type SessionEvent, type StepData, StepMessage, type StepMessageData, StepPopover, advanceStep, cleanupDemoDocuments, completeLearn, escapeHtml, executeAction, executeMany, findVisibleElement, getAvailableLearns, getBrowserActions, getCurrentUser, getLearnState, getStepAsMessage, getThreadMessages, getUserAvatarUrl, highlight, pauseLearn, removeHighlight, renderMarkdown, resetLearn, sendMessageInThread, setCsrfToken, sleep, startConversation, startLearn, translate, useAvailableLearns, useLearnSession, useNoraLearn, useRouteChange };
