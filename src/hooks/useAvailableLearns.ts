@@ -19,14 +19,22 @@ export function useAvailableLearns(currentRoute: string) {
       return
     }
 
-    const dismissed = _getDismissed()
     const snoozed = _getSnoozed()
     const routeStr = currentRoute.replace(/^\//, '')
 
-    const matching = allLearns.filter((learn) => {
-      if (dismissed[learn.name]) return false
-      if (snoozed[routeStr] && Date.now() < snoozed[routeStr]) return false
+    // Check global snooze
+    if (snoozed['__all__'] && Date.now() < snoozed['__all__']) {
+      setMatchingLearns([])
+      return
+    }
 
+    // Check per-route snooze
+    if (snoozed[routeStr] && Date.now() < snoozed[routeStr]) {
+      setMatchingLearns([])
+      return
+    }
+
+    const matching = allLearns.filter((learn) => {
       // Match by entry_route
       if (learn.entry_route) {
         const learnRoute = learn.entry_route.replace(/^\//, '')
@@ -57,19 +65,16 @@ export function useAvailableLearns(currentRoute: string) {
     setMatchingLearns(matching)
   }, [allLearns, currentRoute])
 
-  // Dismiss a learn permanently
-  const dismissLearn = useCallback((learnName: string) => {
-    const dismissed = _getDismissed()
-    dismissed[learnName] = true
-    localStorage.setItem('nora_learn_dismissed', JSON.stringify(dismissed))
-    setAllLearns((prev) => prev.filter((l) => l.name !== learnName))
-  }, [])
-
-  // Snooze learns for current route (24h)
-  const snoozeRoute = useCallback((route: string) => {
+  // Snooze learns (per-route or global)
+  const snoozeRoute = useCallback((route: string, scope: 'page' | 'all', hours: number) => {
     const snoozed = _getSnoozed()
-    const routeStr = route.replace(/^\//, '')
-    snoozed[routeStr] = Date.now() + 24 * 60 * 60 * 1000
+    const expiry = Date.now() + hours * 60 * 60 * 1000
+    if (scope === 'all') {
+      snoozed['__all__'] = expiry
+    } else {
+      const routeStr = route.replace(/^\//, '')
+      snoozed[routeStr] = expiry
+    }
     localStorage.setItem('nora_learn_snoozed', JSON.stringify(snoozed))
     setMatchingLearns([])
   }, [])
@@ -88,14 +93,10 @@ export function useAvailableLearns(currentRoute: string) {
     } catch { /* ignore */ }
   }, [])
 
-  return { allLearns, matchingLearns, dismissLearn, snoozeRoute, refreshLearns }
+  return { allLearns, matchingLearns, snoozeRoute, refreshLearns }
 }
 
 // ========== localStorage helpers ==========
-
-function _getDismissed(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem('nora_learn_dismissed') || '{}') } catch { return {} }
-}
 
 function _getSnoozed(): Record<string, number> {
   try {

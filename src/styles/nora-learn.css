@@ -168,32 +168,42 @@
 .nora-assist-header-left { display: flex; align-items: center; gap: 8px; }
 .nora-assist-indicator { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; flex-shrink: 0; }
 .nora-assist-title { font-weight: 600; font-size: 13px; color: #1f2937; }
-.nora-assist-close { background: none; border: none; font-size: 18px; line-height: 1; color: #9ca3af; cursor: pointer; padding: 0 2px; transition: color 0.15s; }
-.nora-assist-close:hover { color: #6b7280; }
 .nora-assist-items { padding: 0 14px; }
-.nora-assist-item { padding: 10px 0; border-top: 1px solid #e5e7eb; }
+.nora-assist-item { padding: 8px 0; border-top: 1px solid #e5e7eb; }
 .nora-assist-item:first-child { border-top: none; }
 .nora-assist-item-disabled { opacity: 0.5; }
-.nora-assist-item-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.nora-assist-item-overflow { display: none; }
+.nora-assist-item-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .nora-assist-item-info { flex: 1; min-width: 0; }
-.nora-assist-item-title { display: block; font-weight: 500; color: #1f2937; line-height: 1.3; }
+.nora-assist-item-title { display: -webkit-box; font-weight: 500; color: #1f2937; line-height: 1.3; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .nora-assist-item-meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .nora-assist-item-duration { font-size: 11px; color: #9ca3af; }
 .nora-assist-item-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 8px; background: #7c3aed; color: white; }
 .nora-assist-item-prereq { font-size: 11px; color: #9ca3af; margin-top: 4px; }
-.nora-assist-dismiss-one { background: none; border: none; font-size: 14px; line-height: 1; color: #d1d5db; cursor: pointer; padding: 2px 4px; flex-shrink: 0; transition: color 0.15s; opacity: 0; }
-.nora-assist-item:hover .nora-assist-dismiss-one { opacity: 1; }
-.nora-assist-dismiss-one:hover { color: #ef4444; }
-.nora-assist-item-actions { margin-top: 6px; }
-.nora-assist-footer { display: flex; justify-content: flex-end; padding: 6px 14px 10px; }
+.nora-assist-item-right { display: flex; align-items: center; flex-shrink: 0; }
+.nora-assist-item-right .btn { padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.nora-assist-item-right .btn-primary { background: #7c3aed; border: none; color: white; }
+.nora-assist-item-right .btn-primary:hover { background: #6d28d9; }
+.nora-assist-item-right .btn-default { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); color: #64748b; }
 
-/* Buttons in assist panel */
-.nora-assist-item-actions .btn { padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
-.nora-assist-item-actions .btn-primary { background: #7c3aed; border: none; color: white; }
-.nora-assist-item-actions .btn-primary:hover { background: #6d28d9; }
-.nora-assist-item-actions .btn-default { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); color: #64748b; }
-.nora-assist-footer .btn { padding: 4px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; }
-.nora-assist-footer .btn-default { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); color: #64748b; }
+/* Footer — dark "Plus tard" button */
+.nora-assist-footer { display: flex; justify-content: center; padding: 8px 14px 12px; }
+.nora-assist-later-btn { width: 100%; background: #1f2937; border: none; border-radius: 8px; color: white; cursor: pointer; padding: 8px 16px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.nora-assist-later-btn:hover { background: #111827; }
+.nora-assist-later-btn svg { opacity: 0.7; }
+
+/* Snooze panel */
+.nora-assist-snooze-panel { max-height: 0; overflow: hidden; transition: max-height 0.2s ease; padding: 0 14px; border-top: 1px solid transparent; background: rgba(0, 0, 0, 0.015); }
+.nora-assist-snooze-panel-open { max-height: 200px; padding: 10px 14px 14px; border-top-color: #e5e7eb; }
+.nora-assist-snooze-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; margin-bottom: 8px; }
+.nora-assist-snooze-scope { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+.nora-assist-scope-btn { flex: 1; background: none; border: none; padding: 5px 8px; font-size: 12px; color: #6b7280; cursor: pointer; transition: all 0.15s; }
+.nora-assist-scope-btn + .nora-assist-scope-btn { border-left: 1px solid #e5e7eb; }
+.nora-assist-scope-btn.active { background: #6366f1; color: white; font-weight: 500; }
+.nora-assist-snooze-durations { display: flex; gap: 6px; margin-bottom: 8px; }
+.nora-assist-duration-btn { flex: 1; background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 4px; font-size: 12px; font-weight: 500; color: #374151; cursor: pointer; transition: all 0.15s; text-align: center; }
+.nora-assist-duration-btn:hover { border-color: #6366f1; color: #6366f1; background: rgba(99, 102, 241, 0.05); }
+.nora-assist-snooze-info { font-size: 11px; color: #9ca3af; text-align: center; }
 
 /* ====== DARK MODE ====== */
 
@@ -216,6 +226,14 @@
 [data-theme="dark"] .nora-assist-title { color: #e2e8f0; }
 [data-theme="dark"] .nora-assist-item-title { color: #e2e8f0; }
 [data-theme="dark"] .nora-assist-item { border-top-color: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] .nora-assist-later-btn { background: #e2e8f0; color: #1e293b; }
+[data-theme="dark"] .nora-assist-later-btn:hover { background: #f1f5f9; }
+[data-theme="dark"] .nora-assist-snooze-panel { background: rgba(0, 0, 0, 0.15); }
+[data-theme="dark"] .nora-assist-snooze-panel-open { border-top-color: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] .nora-assist-scope-btn { color: #94a3b8; }
+[data-theme="dark"] .nora-assist-scope-btn.active { background: #6366f1; color: white; }
+[data-theme="dark"] .nora-assist-duration-btn { background: rgba(30, 41, 59, 0.8); border-color: #334155; color: #e2e8f0; }
+[data-theme="dark"] .nora-assist-duration-btn:hover { border-color: #818cf8; color: #818cf8; }
 [data-theme="dark"] #nora-step-popover { background: #2e1065; }
 [data-theme="dark"] .nora-pop-arrow { background: #2e1065; }
 [data-theme="dark"] .nora-pop-text { color: #e2e8f0; }

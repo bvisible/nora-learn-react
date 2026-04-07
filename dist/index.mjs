@@ -1,5 +1,5 @@
 // src/components/NoraLearnProvider.tsx
-import { createContext, useContext, useState as useState5, useEffect as useEffect7, useCallback as useCallback4, useRef as useRef6 } from "react";
+import { createContext, useContext, useState as useState6, useEffect as useEffect7, useCallback as useCallback4, useRef as useRef6 } from "react";
 
 // src/core/api.ts
 var _csrfToken;
@@ -983,12 +983,17 @@ function useAvailableLearns(currentRoute) {
       setMatchingLearns([]);
       return;
     }
-    const dismissed = _getDismissed();
     const snoozed = _getSnoozed();
     const routeStr = currentRoute.replace(/^\//, "");
+    if (snoozed["__all__"] && Date.now() < snoozed["__all__"]) {
+      setMatchingLearns([]);
+      return;
+    }
+    if (snoozed[routeStr] && Date.now() < snoozed[routeStr]) {
+      setMatchingLearns([]);
+      return;
+    }
     const matching = allLearns.filter((learn) => {
-      if (dismissed[learn.name]) return false;
-      if (snoozed[routeStr] && Date.now() < snoozed[routeStr]) return false;
       if (learn.entry_route) {
         const learnRoute = learn.entry_route.replace(/^\//, "");
         if (routeStr.toLowerCase() === learnRoute.toLowerCase()) return true;
@@ -1008,16 +1013,15 @@ function useAvailableLearns(currentRoute) {
     });
     setMatchingLearns(matching);
   }, [allLearns, currentRoute]);
-  const dismissLearn = useCallback2((learnName) => {
-    const dismissed = _getDismissed();
-    dismissed[learnName] = true;
-    localStorage.setItem("nora_learn_dismissed", JSON.stringify(dismissed));
-    setAllLearns((prev) => prev.filter((l) => l.name !== learnName));
-  }, []);
-  const snoozeRoute = useCallback2((route) => {
+  const snoozeRoute = useCallback2((route, scope, hours) => {
     const snoozed = _getSnoozed();
-    const routeStr = route.replace(/^\//, "");
-    snoozed[routeStr] = Date.now() + 24 * 60 * 60 * 1e3;
+    const expiry = Date.now() + hours * 60 * 60 * 1e3;
+    if (scope === "all") {
+      snoozed["__all__"] = expiry;
+    } else {
+      const routeStr = route.replace(/^\//, "");
+      snoozed[routeStr] = expiry;
+    }
     localStorage.setItem("nora_learn_snoozed", JSON.stringify(snoozed));
     setMatchingLearns([]);
   }, []);
@@ -1033,14 +1037,7 @@ function useAvailableLearns(currentRoute) {
     } catch {
     }
   }, []);
-  return { allLearns, matchingLearns, dismissLearn, snoozeRoute, refreshLearns };
-}
-function _getDismissed() {
-  try {
-    return JSON.parse(localStorage.getItem("nora_learn_dismissed") || "{}");
-  } catch {
-    return {};
-  }
+  return { allLearns, matchingLearns, snoozeRoute, refreshLearns };
 }
 function _getSnoozed() {
   try {
@@ -1550,37 +1547,35 @@ function computePosition(targetRect) {
 }
 
 // src/components/LearnPopup.tsx
+import { useState as useState5 } from "react";
 import { createPortal as createPortal2 } from "react-dom";
 import { jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+var DURATIONS = [
+  { hours: 1, label: "1h" },
+  { hours: 4, label: "4h" },
+  { hours: 24, label: "24h" },
+  { hours: 168, labelKey: "1 sem." }
+];
 function LearnPopup({
   learns,
   routeStr,
   translateFn,
   onStart,
-  onDismiss,
   onSnooze
 }) {
   const __ = (t) => translate(t, translateFn);
+  const [snoozeOpen, setSnoozeOpen] = useState5(false);
+  const [snoozeScope, setSnoozeScope] = useState5("page");
+  const [snoozeInfoText, setSnoozeInfoText] = useState5(__("R\xE9appara\xEEtra dans 24h"));
   if (!learns.length) return null;
   const MAX_VISIBLE = 2;
   const matchNames = learns.map((l) => l.name);
   const title = learns.length > 1 ? __("Formations disponibles") + ` (${learns.length})` : __("Formation disponible");
   const popup = /* @__PURE__ */ jsx4("div", { id: "nora-assist-panel", children: /* @__PURE__ */ jsxs4("div", { className: "nora-assist-card", role: "status", children: [
-    /* @__PURE__ */ jsxs4("div", { className: "nora-assist-header", children: [
-      /* @__PURE__ */ jsxs4("div", { className: "nora-assist-header-left", children: [
-        /* @__PURE__ */ jsx4("span", { className: "nora-assist-indicator" }),
-        /* @__PURE__ */ jsx4("span", { className: "nora-assist-title", children: title })
-      ] }),
-      /* @__PURE__ */ jsx4(
-        "button",
-        {
-          className: "nora-assist-close",
-          title: __("Plus tard"),
-          onClick: () => onSnooze(routeStr),
-          children: "\xD7"
-        }
-      )
-    ] }),
+    /* @__PURE__ */ jsx4("div", { className: "nora-assist-header", children: /* @__PURE__ */ jsxs4("div", { className: "nora-assist-header-left", children: [
+      /* @__PURE__ */ jsx4("span", { className: "nora-assist-indicator" }),
+      /* @__PURE__ */ jsx4("span", { className: "nora-assist-title", children: title })
+    ] }) }),
     /* @__PURE__ */ jsx4("div", { className: "nora-assist-items", children: learns.map((learn, idx) => {
       const isHidden = idx >= MAX_VISIBLE;
       const hasUnmetPrereq = (learn.prerequisites || []).some((p) => matchNames.includes(p));
@@ -1603,46 +1598,75 @@ function LearnPopup({
                   ] })
                 ] })
               ] }),
-              /* @__PURE__ */ jsx4(
+              /* @__PURE__ */ jsx4("div", { className: "nora-assist-item-right", children: hasUnmetPrereq ? /* @__PURE__ */ jsx4("button", { className: "btn btn-xs btn-default", disabled: true, children: __("Commencer") }) : /* @__PURE__ */ jsx4(
                 "button",
                 {
-                  className: "nora-assist-dismiss-one",
-                  title: __("Ne plus proposer"),
-                  onClick: (e) => {
-                    e.stopPropagation();
-                    onDismiss(learn.name);
-                  },
-                  children: "\xD7"
+                  className: "btn btn-xs btn-primary nora-assist-start",
+                  onClick: () => onStart(learn.name),
+                  children: btnLabel
                 }
-              )
+              ) })
             ] }),
             hasUnmetPrereq && learn.prerequisite_titles?.length > 0 && /* @__PURE__ */ jsxs4("div", { className: "nora-assist-item-prereq", children: [
               __("Faire d'abord"),
               " :",
               " ",
               learn.prerequisite_titles.map((p) => /* @__PURE__ */ jsx4("em", { children: escapeHtml(p.title) }, p.name))
-            ] }),
-            /* @__PURE__ */ jsx4("div", { className: "nora-assist-item-actions", children: hasUnmetPrereq ? /* @__PURE__ */ jsx4("button", { className: "btn btn-xs btn-default", disabled: true, children: __("Commencer") }) : /* @__PURE__ */ jsx4(
-              "button",
-              {
-                className: "btn btn-xs btn-primary nora-assist-start",
-                onClick: () => onStart(learn.name),
-                children: btnLabel
-              }
-            ) })
+            ] })
           ]
         },
         learn.name
       );
     }) }),
-    /* @__PURE__ */ jsx4("div", { className: "nora-assist-footer", children: /* @__PURE__ */ jsx4(
+    /* @__PURE__ */ jsx4("div", { className: "nora-assist-footer", children: /* @__PURE__ */ jsxs4(
       "button",
       {
-        className: "btn btn-xs btn-default nora-assist-snooze",
-        onClick: () => onSnooze(routeStr),
-        children: __("Plus tard")
+        className: "nora-assist-later-btn",
+        onClick: () => setSnoozeOpen((prev) => !prev),
+        children: [
+          /* @__PURE__ */ jsxs4("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", children: [
+            /* @__PURE__ */ jsx4("line", { x1: "18", y1: "6", x2: "6", y2: "18" }),
+            /* @__PURE__ */ jsx4("line", { x1: "6", y1: "6", x2: "18", y2: "18" })
+          ] }),
+          /* @__PURE__ */ jsx4("span", { children: __("Plus tard") })
+        ]
       }
-    ) })
+    ) }),
+    /* @__PURE__ */ jsxs4("div", { className: `nora-assist-snooze-panel${snoozeOpen ? " nora-assist-snooze-panel-open" : ""}`, children: [
+      /* @__PURE__ */ jsx4("div", { className: "nora-assist-snooze-label", children: __("Rappeler plus tard") }),
+      /* @__PURE__ */ jsxs4("div", { className: "nora-assist-snooze-scope", children: [
+        /* @__PURE__ */ jsx4(
+          "button",
+          {
+            className: `nora-assist-scope-btn${snoozeScope === "page" ? " active" : ""}`,
+            onClick: () => setSnoozeScope("page"),
+            children: __("Cette page")
+          }
+        ),
+        /* @__PURE__ */ jsx4(
+          "button",
+          {
+            className: `nora-assist-scope-btn${snoozeScope === "all" ? " active" : ""}`,
+            onClick: () => setSnoozeScope("all"),
+            children: __("Toutes les pages")
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsx4("div", { className: "nora-assist-snooze-durations", children: DURATIONS.map((d) => {
+        const label = d.labelKey ? __(d.labelKey) : d.label;
+        return /* @__PURE__ */ jsx4(
+          "button",
+          {
+            className: "nora-assist-duration-btn",
+            onMouseEnter: () => setSnoozeInfoText(__("R\xE9appara\xEEtra dans") + " " + label),
+            onClick: () => onSnooze(routeStr, snoozeScope, d.hours),
+            children: label
+          },
+          d.hours
+        );
+      }) }),
+      /* @__PURE__ */ jsx4("div", { className: "nora-assist-snooze-info", children: snoozeInfoText })
+    ] })
   ] }) });
   return createPortal2(popup, document.body);
 }
@@ -1816,18 +1840,18 @@ function useNoraLearn() {
   return useContext(NoraLearnContext);
 }
 function NoraLearnProvider({ config = {}, children }) {
-  const [currentRoute, setCurrentRoute] = useState5(
+  const [currentRoute, setCurrentRoute] = useState6(
     () => (config.getCurrentRoute || (() => window.location.pathname))()
   );
-  const [showPopup, setShowPopup] = useState5(false);
+  const [showPopup, setShowPopup] = useState6(false);
   const popupTimerRef = useRef6(null);
-  const [prereqDialog, setPrereqDialog] = useState5({ open: false, prerequisites: [], learnName: "" });
+  const [prereqDialog, setPrereqDialog] = useState6({ open: false, prerequisites: [], learnName: "" });
   useEffect7(() => {
     if (config.csrfToken) setCsrfToken(config.csrfToken);
     else if (window.csrf_token) setCsrfToken(window.csrf_token);
   }, [config.csrfToken]);
   const session = useLearnSession(config);
-  const { matchingLearns, dismissLearn, snoozeRoute, refreshLearns } = useAvailableLearns(currentRoute);
+  const { matchingLearns, snoozeRoute, refreshLearns } = useAvailableLearns(currentRoute);
   useRouteChange(
     useCallback4(
       (path) => {
@@ -1914,7 +1938,6 @@ function NoraLearnProvider({ config = {}, children }) {
             routeStr: currentRoute,
             translateFn: config.translate,
             onStart: (name) => handleStartLearn(name),
-            onDismiss: dismissLearn,
             onSnooze: snoozeRoute
           }
         ),

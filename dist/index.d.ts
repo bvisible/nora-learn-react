@@ -202,10 +202,9 @@ interface LearnPopupProps {
     routeStr: string;
     translateFn?: (text: string) => string;
     onStart: (learnName: string) => void;
-    onDismiss: (learnName: string) => void;
-    onSnooze: (route: string) => void;
+    onSnooze: (route: string, scope: 'page' | 'all', hours: number) => void;
 }
-declare function LearnPopup({ learns, routeStr, translateFn, onStart, onDismiss, onSnooze, }: LearnPopupProps): React.ReactPortal | null;
+declare function LearnPopup({ learns, routeStr, translateFn, onStart, onSnooze, }: LearnPopupProps): React.ReactPortal | null;
 
 interface StepPopoverProps {
     element: HTMLElement | null;
@@ -333,8 +332,7 @@ declare function useLearnSession(config?: NoraLearnConfig): {
 declare function useAvailableLearns(currentRoute: string): {
     allLearns: LearnInfo[];
     matchingLearns: LearnInfo[];
-    dismissLearn: (learnName: string) => void;
-    snoozeRoute: (route: string) => void;
+    snoozeRoute: (route: string, scope: "page" | "all", hours: number) => void;
     refreshLearns: () => Promise<void>;
 };
 

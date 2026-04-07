@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { LearnInfo } from '../core/types'
 import { translate, escapeHtml } from '../core/utils'
@@ -8,19 +8,28 @@ interface LearnPopupProps {
   routeStr: string
   translateFn?: (text: string) => string
   onStart: (learnName: string) => void
-  onDismiss: (learnName: string) => void
-  onSnooze: (route: string) => void
+  onSnooze: (route: string, scope: 'page' | 'all', hours: number) => void
 }
+
+const DURATIONS = [
+  { hours: 1, label: '1h' },
+  { hours: 4, label: '4h' },
+  { hours: 24, label: '24h' },
+  { hours: 168, labelKey: '1 sem.' },
+]
 
 export function LearnPopup({
   learns,
   routeStr,
   translateFn,
   onStart,
-  onDismiss,
   onSnooze,
 }: LearnPopupProps) {
   const __ = (t: string) => translate(t, translateFn)
+
+  const [snoozeOpen, setSnoozeOpen] = useState(false)
+  const [snoozeScope, setSnoozeScope] = useState<'page' | 'all'>('page')
+  const [snoozeInfoText, setSnoozeInfoText] = useState(__('Réapparaîtra dans 24h'))
 
   if (!learns.length) return null
 
@@ -35,22 +44,15 @@ export function LearnPopup({
   const popup = (
     <div id="nora-assist-panel">
       <div className="nora-assist-card" role="status">
-        {/* Header */}
+        {/* Header — no close button */}
         <div className="nora-assist-header">
           <div className="nora-assist-header-left">
             <span className="nora-assist-indicator" />
             <span className="nora-assist-title">{title}</span>
           </div>
-          <button
-            className="nora-assist-close"
-            title={__('Plus tard')}
-            onClick={() => onSnooze(routeStr)}
-          >
-            &times;
-          </button>
         </div>
 
-        {/* Items */}
+        {/* Items — compact layout: title+meta left, button right */}
         <div className="nora-assist-items">
           {learns.map((learn, idx) => {
             const isHidden = idx >= MAX_VISIBLE
@@ -78,16 +80,20 @@ export function LearnPopup({
                       )}
                     </span>
                   </div>
-                  <button
-                    className="nora-assist-dismiss-one"
-                    title={__('Ne plus proposer')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDismiss(learn.name)
-                    }}
-                  >
-                    &times;
-                  </button>
+                  <div className="nora-assist-item-right">
+                    {hasUnmetPrereq ? (
+                      <button className="btn btn-xs btn-default" disabled>
+                        {__('Commencer')}
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-xs btn-primary nora-assist-start"
+                        onClick={() => onStart(learn.name)}
+                      >
+                        {btnLabel}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {hasUnmetPrereq && learn.prerequisite_titles?.length > 0 && (
                   <div className="nora-assist-item-prereq">
@@ -97,33 +103,58 @@ export function LearnPopup({
                     ))}
                   </div>
                 )}
-                <div className="nora-assist-item-actions">
-                  {hasUnmetPrereq ? (
-                    <button className="btn btn-xs btn-default" disabled>
-                      {__('Commencer')}
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-xs btn-primary nora-assist-start"
-                      onClick={() => onStart(learn.name)}
-                    >
-                      {btnLabel}
-                    </button>
-                  )}
-                </div>
               </div>
             )
           })}
         </div>
 
-        {/* Footer */}
+        {/* Footer — dark "Plus tard" button */}
         <div className="nora-assist-footer">
           <button
-            className="btn btn-xs btn-default nora-assist-snooze"
-            onClick={() => onSnooze(routeStr)}
+            className="nora-assist-later-btn"
+            onClick={() => setSnoozeOpen((prev) => !prev)}
           >
-            {__('Plus tard')}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            <span>{__('Plus tard')}</span>
           </button>
+        </div>
+
+        {/* Snooze panel — scope + duration */}
+        <div className={`nora-assist-snooze-panel${snoozeOpen ? ' nora-assist-snooze-panel-open' : ''}`}>
+          <div className="nora-assist-snooze-label">{__('Rappeler plus tard')}</div>
+          <div className="nora-assist-snooze-scope">
+            <button
+              className={`nora-assist-scope-btn${snoozeScope === 'page' ? ' active' : ''}`}
+              onClick={() => setSnoozeScope('page')}
+            >
+              {__('Cette page')}
+            </button>
+            <button
+              className={`nora-assist-scope-btn${snoozeScope === 'all' ? ' active' : ''}`}
+              onClick={() => setSnoozeScope('all')}
+            >
+              {__('Toutes les pages')}
+            </button>
+          </div>
+          <div className="nora-assist-snooze-durations">
+            {DURATIONS.map((d) => {
+              const label = d.labelKey ? __(d.labelKey) : d.label
+              return (
+                <button
+                  key={d.hours}
+                  className="nora-assist-duration-btn"
+                  onMouseEnter={() => setSnoozeInfoText(__('Réapparaîtra dans') + ' ' + label)}
+                  onClick={() => onSnooze(routeStr, snoozeScope, d.hours)}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          <div className="nora-assist-snooze-info">{snoozeInfoText}</div>
         </div>
       </div>
     </div>

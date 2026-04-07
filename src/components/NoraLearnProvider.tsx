@@ -53,7 +53,7 @@ export function NoraLearnProvider({ config = {}, children }: NoraLearnProviderPr
   const session = useLearnSession(config)
 
   // Available learns hook
-  const { matchingLearns, dismissLearn, snoozeRoute, refreshLearns } =
+  const { matchingLearns, snoozeRoute, refreshLearns } =
     useAvailableLearns(currentRoute)
 
   // Route change detection
@@ -170,7 +170,6 @@ export function NoraLearnProvider({ config = {}, children }: NoraLearnProviderPr
           routeStr={currentRoute}
           translateFn={config.translate}
           onStart={(name) => handleStartLearn(name)}
-          onDismiss={dismissLearn}
           onSnooze={snoozeRoute}
         />
       )}
