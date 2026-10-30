@@ -20,6 +20,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "lint:ds": "d=\"${NEOFFICE_DESIGN_SYSTEM:-$HOME/GitHub/neoffice-design-system}/tooling/design-system-lint\"; if [ -f \"$d\" ]; then sh \"$d\" src; else echo 'design-system lint skipped: design system not found'; fi",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
