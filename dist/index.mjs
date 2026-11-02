@@ -79,6 +79,35 @@ async function cleanupDemoDocuments(learnName) {
   }
 }
 
+// src/core/target.ts
+var SOURCE = "/assets/nora/js/nora_learn_target.js";
+var loading = null;
+function module() {
+  return window.nora?.learn_target;
+}
+function loadTarget() {
+  if (module()) return Promise.resolve();
+  if (!loading) {
+    loading = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = SOURCE;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        loading = null;
+        resolve();
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return loading;
+}
+function holds(condition) {
+  return module()?.holds(condition) ?? false;
+}
+function allOf(root, target) {
+  return module()?.all(root, target) ?? [];
+}
+
 // src/core/utils.ts
 var ESC_MAP = {
   "&": "&amp;",
@@ -198,47 +227,7 @@ function findVisibleElement(selector) {
     const style = window.getComputedStyle(el);
     return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
   };
-  const parseContains = (sel) => {
-    const m = sel.match(/:contains\(['"]?([^'")\]]+)['"]?\)/);
-    if (!m) return null;
-    return { base: sel.replace(/:contains\(['"]?[^'")\]]+['"]?\)/, "").trim() || "*", text: m[1].toLowerCase() };
-  };
-  const queryAll = (root, sel) => {
-    if (sel.includes(":contains(") && sel.includes(",")) {
-      const results = [];
-      const parts = sel.split(/,(?![^(]*\))/);
-      for (const part of parts) {
-        const trimmed = part.trim();
-        if (!trimmed) continue;
-        const parsed2 = parseContains(trimmed);
-        if (parsed2) {
-          try {
-            results.push(...Array.from(root.querySelectorAll(parsed2.base)).filter(
-              (el) => el.textContent?.toLowerCase().includes(parsed2.text)
-            ));
-          } catch {
-          }
-        } else {
-          try {
-            results.push(...Array.from(root.querySelectorAll(trimmed)));
-          } catch {
-          }
-        }
-      }
-      return results;
-    }
-    const parsed = parseContains(sel);
-    if (parsed) {
-      return Array.from(root.querySelectorAll(parsed.base)).filter(
-        (el) => el.textContent?.toLowerCase().includes(parsed.text)
-      );
-    }
-    try {
-      return Array.from(root.querySelectorAll(sel));
-    } catch {
-      return [];
-    }
-  };
+  const queryAll = allOf;
   const modal = document.querySelector(".modal.show, .modal.in");
   if (modal) {
     for (const el of queryAll(modal, selector)) {
@@ -367,6 +356,7 @@ var LearnSession = class {
   }
   // ========== Lifecycle ==========
   async start() {
+    await loadTarget();
     try {
       const result = await startLearn(this.learnName, this.skipPrerequisites);
       if (!result.success) {
@@ -405,6 +395,7 @@ var LearnSession = class {
     }
   }
   async resume() {
+    await loadTarget();
     try {
       const saved = this._loadLocalState();
       if (!saved || saved.learn_name !== this.learnName) return false;
@@ -541,7 +532,7 @@ var LearnSession = class {
       this.currentStep = step;
       if (step.skip_if) {
         try {
-          if (new Function(`return !!(${step.skip_if})`)()) {
+          if (holds(step.skip_if)) {
             if (step.is_last_step) {
               this._onComplete();
             } else {
@@ -554,7 +545,7 @@ var LearnSession = class {
       }
       if (step.allow_skip && step.wait_condition) {
         try {
-          if (new Function(`return !!(${step.wait_condition})`)()) {
+          if (holds(step.wait_condition)) {
             if (step.is_last_step) {
               this._onComplete();
             } else {
@@ -639,7 +630,7 @@ var LearnSession = class {
         return;
       }
       try {
-        if (new Function(`return !!(${condition})`)()) {
+        if (holds(condition)) {
           this._stopWatching();
           if (step.is_last_step) {
             this._onComplete();
@@ -1088,14 +1079,9 @@ function StepMessage({
     return () => clearTimeout(timer);
   }, [data.step_index]);
   const handleContinue = () => {
-    if (validationRule) {
-      try {
-        if (!new Function(`return !!(${validationRule})`)()) {
-          onValidationFail?.(validationErrorMessage || __("Please complete this step first."));
-          return;
-        }
-      } catch {
-      }
+    if (validationRule && !holds(validationRule)) {
+      onValidationFail?.(validationErrorMessage || __("Please complete this step first."));
+      return;
     }
     onContinue?.();
   };

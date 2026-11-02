@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { holds } from '../core/target'
 import type { StepMessageData } from '../core/types'
 import { renderMarkdown, translate } from '../core/utils'
 
@@ -7,7 +8,7 @@ interface StepMessageProps {
   onDoIt?: () => void
   onContinue?: () => void
   onValidationFail?: (message: string) => void
-  validationRule?: string
+  validationRule?: unknown
   validationErrorMessage?: string
   translateFn?: (text: string) => string
 }
@@ -39,13 +40,9 @@ export function StepMessage({
   }, [data.step_index])
 
   const handleContinue = () => {
-    if (validationRule) {
-      try {
-        if (!new Function(`return !!(${validationRule})`)()) {
-          onValidationFail?.(validationErrorMessage || __('Please complete this step first.'))
-          return
-        }
-      } catch { /* rule not evaluable, let pass */ }
+    if (validationRule && !holds(validationRule)) {
+      onValidationFail?.(validationErrorMessage || __('Please complete this step first.'))
+      return
     }
     onContinue?.()
   }

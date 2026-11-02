@@ -49,11 +49,11 @@ interface StepData {
     action_target?: string;
     is_checkpoint?: boolean;
     is_last_step?: boolean;
-    wait_condition?: string;
+    wait_condition?: unknown;
     wait_timeout?: number;
-    skip_if?: string;
+    skip_if?: unknown;
     allow_skip?: boolean;
-    validation_rule?: string;
+    validation_rule?: unknown;
     on_error_message?: string;
     highlight_actions?: HighlightAction[];
     execute_actions?: BrowserAction[];
@@ -220,7 +220,7 @@ interface StepMessageProps {
     onDoIt?: () => void;
     onContinue?: () => void;
     onValidationFail?: (message: string) => void;
-    validationRule?: string;
+    validationRule?: unknown;
     validationErrorMessage?: string;
     translateFn?: (text: string) => string;
 }
@@ -382,7 +382,7 @@ declare function highlight(element: HTMLElement, options?: Record<string, unknow
  */
 declare function removeHighlight(): void;
 /**
- * Find a visible element by CSS selector, with :contains() support
+ * Find a visible element by a tutorial's target: a fieldname, a selector or a target as data
  */
 declare function findVisibleElement(selector: string): HTMLElement | null;
 /**

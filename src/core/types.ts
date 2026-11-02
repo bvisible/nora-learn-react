@@ -45,11 +45,11 @@ export interface StepData {
   action_target?: string
   is_checkpoint?: boolean
   is_last_step?: boolean
-  wait_condition?: string
+  wait_condition?: unknown
   wait_timeout?: number
-  skip_if?: string
+  skip_if?: unknown
   allow_skip?: boolean
-  validation_rule?: string
+  validation_rule?: unknown
   on_error_message?: string
   highlight_actions?: HighlightAction[]
   execute_actions?: BrowserAction[]

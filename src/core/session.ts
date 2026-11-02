@@ -1,6 +1,7 @@
 import type { LearnState, StepData, NoraLearnConfig, SessionEvent, SavedLearnState } from './types'
 import * as api from './api'
 import { removeHighlight, findVisibleElement, executeMany, executeHighlightActions } from './browser-actions'
+import { holds, loadTarget } from './target'
 import { sleep } from './utils'
 
 const LOCAL_KEY = 'nora_active_learn'
@@ -45,6 +46,7 @@ export class LearnSession {
   // ========== Lifecycle ==========
 
   async start(): Promise<boolean> {
+    await loadTarget()
     try {
       const result = await api.startLearn(this.learnName, this.skipPrerequisites)
 
@@ -97,6 +99,7 @@ export class LearnSession {
   }
 
   async resume(): Promise<boolean> {
+    await loadTarget()
     try {
       const saved = this._loadLocalState()
       if (!saved || saved.learn_name !== this.learnName) return false
@@ -250,7 +253,7 @@ export class LearnSession {
       // Check skip_if
       if (step.skip_if) {
         try {
-          if (new Function(`return !!(${step.skip_if})`)()) {
+          if (holds(step.skip_if)) {
             if (step.is_last_step) { this._onComplete() }
             else { await this.advanceStep() }
             return
@@ -261,7 +264,7 @@ export class LearnSession {
       // Check allow_skip
       if (step.allow_skip && step.wait_condition) {
         try {
-          if (new Function(`return !!(${step.wait_condition})`)()) {
+          if (holds(step.wait_condition)) {
             if (step.is_last_step) { this._onComplete() }
             else { await this.advanceStep() }
             return
@@ -360,7 +363,7 @@ export class LearnSession {
     this._watchInterval = setInterval(() => {
       if (!this.isActive) { this._stopWatching(); return }
       try {
-        if (new Function(`return !!(${condition})`)()) {
+        if (holds(condition)) {
           this._stopWatching()
           if (step.is_last_step) { this._onComplete() }
           else { this.advanceStep() }

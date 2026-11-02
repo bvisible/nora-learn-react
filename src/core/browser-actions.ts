@@ -1,3 +1,4 @@
+import { allOf } from './target'
 import type { BrowserAction, HighlightAction } from './types'
 import { sleep } from './utils'
 
@@ -79,7 +80,7 @@ export function removeHighlight(): void {
 }
 
 /**
- * Find a visible element by CSS selector, with :contains() support
+ * Find a visible element by a tutorial's target: a fieldname, a selector or a target as data
  */
 export function findVisibleElement(selector: string): HTMLElement | null {
   const isVisible = (el: Element): el is HTMLElement => {
@@ -88,41 +89,7 @@ export function findVisibleElement(selector: string): HTMLElement | null {
     return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
   }
 
-  // :contains() support
-  const parseContains = (sel: string) => {
-    const m = sel.match(/:contains\(['"]?([^'")\]]+)['"]?\)/)
-    if (!m) return null
-    return { base: sel.replace(/:contains\(['"]?[^'")\]]+['"]?\)/, '').trim() || '*', text: m[1].toLowerCase() }
-  }
-
-  const queryAll = (root: Element | Document, sel: string): Element[] => {
-    if (sel.includes(':contains(') && sel.includes(',')) {
-      const results: Element[] = []
-      const parts = sel.split(/,(?![^(]*\))/)
-      for (const part of parts) {
-        const trimmed = part.trim()
-        if (!trimmed) continue
-        const parsed = parseContains(trimmed)
-        if (parsed) {
-          try {
-            results.push(...Array.from(root.querySelectorAll(parsed.base)).filter((el) =>
-              el.textContent?.toLowerCase().includes(parsed.text)
-            ))
-          } catch { /* invalid selector */ }
-        } else {
-          try { results.push(...Array.from(root.querySelectorAll(trimmed))) } catch { /* ignore */ }
-        }
-      }
-      return results
-    }
-    const parsed = parseContains(sel)
-    if (parsed) {
-      return Array.from(root.querySelectorAll(parsed.base)).filter((el) =>
-        el.textContent?.toLowerCase().includes(parsed.text)
-      )
-    }
-    try { return Array.from(root.querySelectorAll(sel)) } catch { return [] }
-  }
+  const queryAll = allOf
 
   // 1. If modal is open, search inside it first
   const modal = document.querySelector('.modal.show, .modal.in') as HTMLElement | null
