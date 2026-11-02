@@ -7,7 +7,6 @@ Standalone React package that brings Nora's interactive Learn tutorials to SPA a
 - **Step-by-step sidebar** — Floating panel with progress bar, step messages, Continue/Do-it-for-me buttons
 - **Auto-proposal popup** — Notification card when a matching Learn is available for the current route
 - **Element highlighting** — Violet glow on target DOM elements with positioned popover
-- **Ask NORA chat** — OpenClaw AI integration for contextual help during tutorials
 - **Prerequisite dialog** — Handles mandatory and recommended prerequisites
 - **Auto-resume** — Resumes interrupted sessions from localStorage (10min window)
 - **Snooze/Dismiss** — 24h snooze or permanent dismiss per learn
@@ -43,7 +42,7 @@ function App() {
 }
 ```
 
-That's it. The provider handles everything: auto-proposal, session management, sidebar, chat.
+That's it. The provider handles everything: auto-proposal, session management, sidebar.
 
 ## Config options
 
@@ -63,7 +62,7 @@ That's it. The provider handles everything: auto-proposal, session management, s
 src/
 ├── core/           # Framework-agnostic (extractable for Vue later)
 │   ├── types.ts    # TypeScript interfaces
-│   ├── api.ts      # HTTP client (fetch + CSRF) for Learn + Chat APIs
+│   ├── api.ts      # HTTP client (fetch + CSRF) for the Learn API
 │   ├── session.ts  # LearnSession engine (port of nora_learn_player.js)
 │   ├── browser-actions.ts  # highlight, click, set_value, navigate
 │   └── utils.ts    # escapeHtml, renderMarkdown, translate
@@ -77,7 +76,6 @@ src/
 │   ├── LearnPopup.tsx         # Notification card
 │   ├── StepPopover.tsx        # Positioned popover with arrow
 │   ├── StepMessage.tsx        # Step content + buttons
-│   ├── ChatArea.tsx           # Ask NORA (OpenClaw)
 │   └── PrerequisiteDialog.tsx # Prerequisite dialog
 └── styles/
     └── nora-learn.css         # Full CSS (sidebar, popover, assist panel, dark mode)
@@ -90,11 +88,6 @@ All endpoints are from `nora.api.learn_engine` (standard Frappe session auth):
 - `start_learn`, `get_learn_state`, `get_step_as_message`
 - `advance_step`, `pause_learn`, `complete_learn`, `reset_learn`
 - `get_available_learns`, `cleanup_nora_demo_documents`
-
-Chat endpoints from `nora.api.quick_chat`:
-
-- `start_conversation`, `send_message_in_thread`
-- `get_thread_messages`, `get_browser_actions`
 
 ## Creating SPA-compatible Learns
 

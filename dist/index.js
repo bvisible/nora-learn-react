@@ -20,7 +20,6 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
-  ChatArea: () => ChatArea,
   LearnPopup: () => LearnPopup,
   LearnSession: () => LearnSession,
   LearnSidebar: () => LearnSidebar,
@@ -36,21 +35,17 @@ __export(index_exports, {
   executeMany: () => executeMany,
   findVisibleElement: () => findVisibleElement,
   getAvailableLearns: () => getAvailableLearns,
-  getBrowserActions: () => getBrowserActions,
   getCurrentUser: () => getCurrentUser,
   getLearnState: () => getLearnState,
   getStepAsMessage: () => getStepAsMessage,
-  getThreadMessages: () => getThreadMessages,
   getUserAvatarUrl: () => getUserAvatarUrl,
   highlight: () => highlight,
   pauseLearn: () => pauseLearn,
   removeHighlight: () => removeHighlight,
   renderMarkdown: () => renderMarkdown,
   resetLearn: () => resetLearn,
-  sendMessageInThread: () => sendMessageInThread,
   setCsrfToken: () => setCsrfToken,
   sleep: () => sleep,
-  startConversation: () => startConversation,
   startLearn: () => startLearn,
   translate: () => translate,
   useAvailableLearns: () => useAvailableLearns,
@@ -61,7 +56,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // src/components/NoraLearnProvider.tsx
-var import_react9 = require("react");
+var import_react7 = require("react");
 
 // src/core/api.ts
 var _csrfToken;
@@ -100,11 +95,10 @@ async function getLearnState(learnName) {
     learn_name: learnName
   });
 }
-async function getStepAsMessage(learnName, stepIndex, isTest = false) {
+async function getStepAsMessage(learnName, stepIndex) {
   return frappePost("nora.api.learn_engine.get_step_as_message", {
     learn_name: learnName,
-    step_index: stepIndex,
-    is_test: isTest ? 1 : 0
+    step_index: stepIndex
   });
 }
 async function advanceStep(learnName) {
@@ -140,30 +134,6 @@ async function cleanupDemoDocuments(learnName) {
     });
   } catch {
   }
-}
-async function startConversation(message, context) {
-  return frappePost(
-    "nora.api.quick_chat.start_conversation",
-    { message, context }
-  );
-}
-async function sendMessageInThread(threadId, message, context) {
-  return frappePost(
-    "nora.api.quick_chat.send_message_in_thread",
-    { thread_id: threadId, message, context }
-  );
-}
-async function getThreadMessages(threadId) {
-  return frappePost(
-    "nora.api.quick_chat.get_thread_messages",
-    { thread_id: threadId }
-  );
-}
-async function getBrowserActions(threadId) {
-  return frappePost(
-    "nora.api.quick_chat.get_browser_actions",
-    { thread_id: threadId }
-  );
 }
 
 // src/core/utils.ts
@@ -224,7 +194,7 @@ function getCurrentUser() {
 var _highlightedElement = null;
 function highlight(element, options) {
   removeHighlight();
-  const color = options?.glow || "#7c3aed";
+  const color = options?.glow || "#F55D1A";
   const persistent = options?.persistent !== false;
   element._noraOriginalStyles = {
     outline: element.style.outline,
@@ -623,11 +593,7 @@ var LearnSession = class {
     if (!this.isActive || !this.state) return;
     const stepIndex = this.state.current_step;
     try {
-      const step = await getStepAsMessage(
-        this.learnName,
-        stepIndex,
-        this.state.is_test || false
-      );
+      const step = await getStepAsMessage(this.learnName, stepIndex);
       if (!step.success) return;
       this.currentStep = step;
       if (step.skip_if) {
@@ -707,6 +673,10 @@ var LearnSession = class {
     this._clearLocalState();
     const nextLearn = this.state?.next_learn;
     const nextLearnTitle = this.state?.next_learn_title;
+    if (!this.state?.is_test) {
+      completeLearn(this.learnName).catch(() => {
+      });
+    }
     cleanupDemoDocuments(this.learnName);
     this._emit({
       type: "completed",
@@ -1147,7 +1117,6 @@ function useRouteChange(callback) {
 }
 
 // src/components/LearnSidebar.tsx
-var import_react6 = require("react");
 var import_react_dom = require("react-dom");
 
 // src/components/StepMessage.tsx
@@ -1212,231 +1181,8 @@ function StepMessage({
   ] });
 }
 
-// src/components/ChatArea.tsx
-var import_react5 = require("react");
-var import_jsx_runtime2 = require("react/jsx-runtime");
-function ChatArea({
-  isExpanded,
-  learnName,
-  learnTitle,
-  currentStep,
-  stepIndex,
-  totalSteps,
-  noraIconUrl,
-  translateFn
-}) {
-  const __ = (t) => translate(t, translateFn);
-  const [messages, setMessages] = (0, import_react5.useState)([]);
-  const [isLoading, setIsLoading] = (0, import_react5.useState)(false);
-  const [threadId, setThreadId] = (0, import_react5.useState)(null);
-  const knownMsgNames = (0, import_react5.useRef)(/* @__PURE__ */ new Set());
-  const pollRef = (0, import_react5.useRef)(null);
-  const pollCountRef = (0, import_react5.useRef)(0);
-  const textareaRef = (0, import_react5.useRef)(null);
-  const chatMessagesRef = (0, import_react5.useRef)(null);
-  (0, import_react5.useEffect)(() => {
-    if (isExpanded && textareaRef.current) {
-      setTimeout(() => textareaRef.current?.focus(), 100);
-    }
-  }, [isExpanded]);
-  (0, import_react5.useEffect)(() => {
-    if (chatMessagesRef.current) {
-      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-    }
-  }, [messages]);
-  (0, import_react5.useEffect)(() => {
-    return () => stopPolling();
-  }, []);
-  const stopPolling = (0, import_react5.useCallback)(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    setIsLoading(false);
-  }, []);
-  const startPolling = (0, import_react5.useCallback)(() => {
-    stopPolling();
-    pollCountRef.current = 0;
-    pollRef.current = setInterval(async () => {
-      pollCountRef.current++;
-      if (pollCountRef.current > 240) {
-        stopPolling();
-        setMessages((prev) => [...prev, {
-          id: `timeout-${Date.now()}`,
-          role: "assistant",
-          text: __("Response is taking too long. Please try again.")
-        }]);
-        return;
-      }
-      if (!threadId) return;
-      try {
-        const result = await getThreadMessages(threadId);
-        if (result.success && result.messages) {
-          for (const msg of result.messages) {
-            if (msg.is_bot && !knownMsgNames.current.has(msg.name)) {
-              knownMsgNames.current.add(msg.name);
-              setMessages((prev) => [...prev, {
-                id: msg.name,
-                role: "assistant",
-                text: msg.text
-              }]);
-              stopPolling();
-              try {
-                const actionsResult = await getBrowserActions(threadId);
-                if (actionsResult.success && actionsResult.actions?.length) {
-                  for (const action of actionsResult.actions) {
-                    await executeAction(action);
-                  }
-                }
-              } catch {
-              }
-            }
-          }
-        }
-      } catch {
-      }
-    }, 500);
-  }, [threadId, stopPolling, __]);
-  const buildContext = (0, import_react5.useCallback)(() => {
-    const user2 = getCurrentUser();
-    const ctx = {
-      route: window.location.pathname,
-      user: user2.name,
-      user_fullname: user2.fullName
-    };
-    if (currentStep) {
-      ctx.learn_context = {
-        learn_name: learnName,
-        learn_title: learnTitle,
-        current_step: stepIndex,
-        total_steps: totalSteps,
-        step_title: currentStep.title || "",
-        step_action_type: currentStep.action_type || "",
-        step_action_target: currentStep.action_target || ""
-      };
-    }
-    return ctx;
-  }, [currentStep, learnName, learnTitle, stepIndex, totalSteps]);
-  const sendMessage = (0, import_react5.useCallback)(async (text) => {
-    if (isLoading || !text.trim()) return;
-    setIsLoading(true);
-    setMessages((prev) => [...prev, {
-      id: `user-${Date.now()}`,
-      role: "user",
-      text
-    }]);
-    try {
-      const context = JSON.stringify(buildContext());
-      if (!threadId) {
-        const result = await startConversation(text, context);
-        if (result.success && result.thread_id) {
-          setThreadId(result.thread_id);
-          setTimeout(() => startPolling(), 100);
-        }
-      } else {
-        await sendMessageInThread(threadId, text, context);
-        startPolling();
-      }
-    } catch (e) {
-      console.error("[Nora Learn Chat] error:", e);
-      setMessages((prev) => [...prev, {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        text: __("Sorry, an error occurred. Please try again.")
-      }]);
-      setIsLoading(false);
-    }
-  }, [isLoading, threadId, buildContext, startPolling, __]);
-  (0, import_react5.useEffect)(() => {
-  }, [threadId, startPolling]);
-  const handleKeyDown = (e) => {
-    e.stopPropagation();
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-  const handleSend = () => {
-    if (!textareaRef.current) return;
-    const text = textareaRef.current.value.trim();
-    if (!text) return;
-    textareaRef.current.value = "";
-    textareaRef.current.style.height = "auto";
-    sendMessage(text);
-  };
-  const handleInput = () => {
-    if (!textareaRef.current) return;
-    textareaRef.current.style.height = "auto";
-    textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 80) + "px";
-  };
-  if (!isExpanded) return null;
-  const user = getCurrentUser();
-  const avatarUrl = getUserAvatarUrl(user.name);
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-    "div",
-    {
-      className: "nora-lp-chat-area",
-      onKeyDown: (e) => e.stopPropagation(),
-      onKeyUp: (e) => e.stopPropagation(),
-      children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-lp-chat-messages", ref: chatMessagesRef, children: [
-          messages.map((msg) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: `nora-ls-message ${msg.role === "user" ? "nora-ls-message-user" : "nora-ls-message-bot"}`, children: [
-            msg.role === "user" ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "nora-ls-avatar nora-ls-avatar-user", children: avatarUrl ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: avatarUrl, alt: user.name }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { width: 22, height: 22, borderRadius: "50%", background: "#7c3aed", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }, children: user.fullName.charAt(0).toUpperCase() }) }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: noraIconUrl, alt: "NORA" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-              "div",
-              {
-                className: "nora-ls-message-content",
-                dangerouslySetInnerHTML: {
-                  __html: msg.role === "user" ? escapeHtml(msg.text) : msg.text
-                }
-              }
-            )
-          ] }, msg.id)),
-          isLoading && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-ls-message nora-ls-message-bot nora-ls-typing", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: noraIconUrl, alt: "NORA" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-ls-message-content nora-ls-typing-dots", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", {}),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", {}),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", {})
-            ] })
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-lp-input-wrapper", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "textarea",
-            {
-              ref: textareaRef,
-              className: "nora-lp-textarea",
-              placeholder: __("Ask NORA anything..."),
-              rows: 1,
-              onKeyDown: handleKeyDown,
-              onInput: handleInput
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "button",
-            {
-              className: "nora-lp-send",
-              title: __("Send"),
-              disabled: isLoading,
-              onClick: (e) => {
-                e.stopPropagation();
-                handleSend();
-              },
-              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("line", { x1: "22", y1: "2", x2: "11", y2: "13" }),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("polygon", { points: "22 2 15 22 11 13 2 9 22 2" })
-              ] })
-            }
-          )
-        ] })
-      ]
-    }
-  );
-}
-
 // src/components/LearnSidebar.tsx
-var import_jsx_runtime3 = require("react/jsx-runtime");
+var import_jsx_runtime2 = require("react/jsx-runtime");
 function LearnSidebar({
   isOpen,
   title,
@@ -1459,7 +1205,6 @@ function LearnSidebar({
   onValidationFail
 }) {
   const __ = (t) => translate(t, translateFn);
-  const [chatExpanded, setChatExpanded] = (0, import_react6.useState)(false);
   if (!isOpen) return null;
   const pos = computePosition(highlightRect);
   const progress = totalSteps > 0 ? Math.round((stepIndex + 1) / totalSteps * 100) : 0;
@@ -1472,7 +1217,7 @@ function LearnSidebar({
     has_execute_actions: !!currentStep.execute_actions?.length,
     has_wait_condition: !!currentStep.wait_condition
   } : null;
-  const sidebar = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+  const sidebar = /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
     "div",
     {
       className: `nora-lp nora-lp-${pos.h} nora-lp-${pos.v}`,
@@ -1482,11 +1227,11 @@ function LearnSidebar({
       onKeyUp: (e) => e.stopPropagation(),
       onKeyPress: (e) => e.stopPropagation(),
       children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-lp-header", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("img", { className: "nora-lp-icon", src: noraIconUrl, alt: "NORA" }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-lp-header-text", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "nora-lp-title", children: escapeHtml(title) }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "nora-lp-step", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-lp-header", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { className: "nora-lp-icon", src: noraIconUrl, alt: "NORA" }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-lp-header-text", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "nora-lp-title", children: escapeHtml(title) }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "nora-lp-step", children: [
               __("Step"),
               " ",
               stepIndex + 1,
@@ -1494,14 +1239,14 @@ function LearnSidebar({
               totalSteps
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-lp-header-actions", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "nora-lp-btn", title: __("Restart"), onClick: onRestart, children: "\u21BA" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "nora-lp-btn", title: __("Finish"), onClick: onFinish, children: "\u2713" }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "nora-lp-btn close-popup", title: __("Close"), onClick: onClose, children: "\u2715" })
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-lp-header-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { className: "nora-lp-btn", title: __("Restart"), onClick: onRestart, children: "\u21BA" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { className: "nora-lp-btn", title: __("Finish"), onClick: onFinish, children: "\u2713" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { className: "nora-lp-btn close-popup", title: __("Close"), onClick: onClose, children: "\u2715" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-lp-progress", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-lp-progress-bar", style: { width: `${progress}%` } }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-lp-messages", children: isCompleted ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "nora-lp-progress", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "nora-lp-progress-bar", style: { width: `${progress}%` } }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "nora-lp-messages", children: isCompleted ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           CompletionMessage,
           {
             __,
@@ -1511,7 +1256,7 @@ function LearnSidebar({
             onClose,
             noraIconUrl
           }
-        ) : stepMessageData ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        ) : stepMessageData ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           StepMessage,
           {
             data: stepMessageData,
@@ -1522,31 +1267,7 @@ function LearnSidebar({
             validationErrorMessage: currentStep?.on_error_message,
             translateFn
           }
-        ) : null }),
-        !isCompleted && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-lp-chat-toggle", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          "button",
-          {
-            className: "nora-lp-btn nora-lp-chat-btn",
-            onClick: (e) => {
-              e.stopPropagation();
-              setChatExpanded(!chatExpanded);
-            },
-            children: chatExpanded ? __("Hide chat") + " \u2715" : __("Ask NORA") + " \u{1F4AC}"
-          }
-        ) }),
-        !isCompleted && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          ChatArea,
-          {
-            isExpanded: chatExpanded,
-            learnName,
-            learnTitle: title,
-            currentStep,
-            stepIndex,
-            totalSteps,
-            noraIconUrl,
-            translateFn
-          }
-        )
+        ) : null })
       ]
     }
   );
@@ -1560,19 +1281,19 @@ function CompletionMessage({
   onClose,
   noraIconUrl
 }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-ls-message nora-ls-message-bot", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("img", { src: noraIconUrl, alt: "NORA" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-ls-message-content", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-ls-message nora-ls-message-bot", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "nora-ls-avatar nora-ls-avatar-bot", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: noraIconUrl, alt: "NORA" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "nora-ls-message-content", children: [
         "\u{1F389}",
         " ",
         __("Congratulations! You have completed this learn.")
       ] })
     ] }),
-    nextLearn && onNextLearn && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { marginTop: 10 }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("strong", { children: __("Next recommended learn:") }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("br", {}),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+    nextLearn && onNextLearn && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginTop: 10 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("strong", { children: __("Next recommended learn:") }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("br", {}),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
         "button",
         {
           className: "nora-ls-btn nora-ls-continue",
@@ -1584,7 +1305,7 @@ function CompletionMessage({
           ]
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
         "button",
         {
           className: "nora-ls-btn",
@@ -1609,9 +1330,9 @@ function computePosition(targetRect) {
 }
 
 // src/components/LearnPopup.tsx
-var import_react7 = require("react");
+var import_react5 = require("react");
 var import_react_dom2 = require("react-dom");
-var import_jsx_runtime4 = require("react/jsx-runtime");
+var import_jsx_runtime3 = require("react/jsx-runtime");
 var DURATIONS = [
   { hours: 1, label: "1h" },
   { hours: 4, label: "4h" },
@@ -1626,41 +1347,41 @@ function LearnPopup({
   onSnooze
 }) {
   const __ = (t) => translate(t, translateFn);
-  const [snoozeOpen, setSnoozeOpen] = (0, import_react7.useState)(false);
-  const [snoozeScope, setSnoozeScope] = (0, import_react7.useState)("page");
-  const [snoozeInfoText, setSnoozeInfoText] = (0, import_react7.useState)(__("R\xE9appara\xEEtra dans 24h"));
+  const [snoozeOpen, setSnoozeOpen] = (0, import_react5.useState)(false);
+  const [snoozeScope, setSnoozeScope] = (0, import_react5.useState)("page");
+  const [snoozeInfoText, setSnoozeInfoText] = (0, import_react5.useState)(__("R\xE9appara\xEEtra dans 24h"));
   if (!learns.length) return null;
   const MAX_VISIBLE = 2;
   const matchNames = learns.map((l) => l.name);
   const title = learns.length > 1 ? __("Formations disponibles") + ` (${learns.length})` : __("Formation disponible");
-  const popup = /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { id: "nora-assist-panel", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "nora-assist-card", role: "status", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-assist-header", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "nora-assist-header-left", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "nora-assist-indicator" }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "nora-assist-title", children: title })
+  const popup = /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { id: "nora-assist-panel", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-assist-card", role: "status", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-assist-header", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-assist-header-left", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "nora-assist-indicator" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "nora-assist-title", children: title })
     ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-assist-items", children: learns.map((learn, idx) => {
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-assist-items", children: learns.map((learn, idx) => {
       const isHidden = idx >= MAX_VISIBLE;
       const hasUnmetPrereq = (learn.prerequisites || []).some((p) => matchNames.includes(p));
       const btnLabel = learn.in_progress ? __("Reprendre") : __("Commencer");
-      return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+      return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
         "div",
         {
           className: `nora-assist-item${hasUnmetPrereq ? " nora-assist-item-disabled" : ""}${isHidden ? " nora-assist-item-overflow" : ""}`,
           "data-learn": learn.name,
           style: isHidden ? { display: "none" } : void 0,
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "nora-assist-item-row", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "nora-assist-item-info", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "nora-assist-item-title", children: escapeHtml(learn.title) }),
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "nora-assist-item-meta", children: [
-                  learn.in_progress && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "nora-assist-item-badge", children: __("En cours") }),
-                  learn.estimated_duration && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "nora-assist-item-duration", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-assist-item-row", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-assist-item-info", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "nora-assist-item-title", children: escapeHtml(learn.title) }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "nora-assist-item-meta", children: [
+                  learn.in_progress && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "nora-assist-item-badge", children: __("En cours") }),
+                  learn.estimated_duration && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "nora-assist-item-duration", children: [
                     learn.estimated_duration,
                     " min"
                   ] })
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-assist-item-right", children: hasUnmetPrereq ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { className: "btn btn-xs btn-default", disabled: true, children: __("Commencer") }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-assist-item-right", children: hasUnmetPrereq ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { className: "btn btn-xs btn-default", disabled: true, children: __("Commencer") }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
                 "button",
                 {
                   className: "btn btn-xs btn-primary nora-assist-start",
@@ -1669,35 +1390,35 @@ function LearnPopup({
                 }
               ) })
             ] }),
-            hasUnmetPrereq && learn.prerequisite_titles?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "nora-assist-item-prereq", children: [
+            hasUnmetPrereq && learn.prerequisite_titles?.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-assist-item-prereq", children: [
               __("Faire d'abord"),
               " :",
               " ",
-              learn.prerequisite_titles.map((p) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("em", { children: escapeHtml(p.title) }, p.name))
+              learn.prerequisite_titles.map((p) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("em", { children: escapeHtml(p.title) }, p.name))
             ] })
           ]
         },
         learn.name
       );
     }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-assist-footer", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-assist-footer", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
       "button",
       {
         className: "nora-assist-later-btn",
         onClick: () => setSnoozeOpen((prev) => !prev),
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("line", { x1: "18", y1: "6", x2: "6", y2: "18" }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("line", { x1: "6", y1: "6", x2: "18", y2: "18" })
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: "18", y1: "6", x2: "6", y2: "18" }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("line", { x1: "6", y1: "6", x2: "18", y2: "18" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: __("Plus tard") })
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: __("Plus tard") })
         ]
       }
     ) }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: `nora-assist-snooze-panel${snoozeOpen ? " nora-assist-snooze-panel-open" : ""}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-assist-snooze-label", children: __("Rappeler plus tard") }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "nora-assist-snooze-scope", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: `nora-assist-snooze-panel${snoozeOpen ? " nora-assist-snooze-panel-open" : ""}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-assist-snooze-label", children: __("Rappeler plus tard") }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "nora-assist-snooze-scope", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           "button",
           {
             className: `nora-assist-scope-btn${snoozeScope === "page" ? " active" : ""}`,
@@ -1705,7 +1426,7 @@ function LearnPopup({
             children: __("Cette page")
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           "button",
           {
             className: `nora-assist-scope-btn${snoozeScope === "all" ? " active" : ""}`,
@@ -1714,9 +1435,9 @@ function LearnPopup({
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-assist-snooze-durations", children: DURATIONS.map((d) => {
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-assist-snooze-durations", children: DURATIONS.map((d) => {
         const label = d.labelKey ? __(d.labelKey) : d.label;
-        return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           "button",
           {
             className: "nora-assist-duration-btn",
@@ -1727,29 +1448,29 @@ function LearnPopup({
           d.hours
         );
       }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-assist-snooze-info", children: snoozeInfoText })
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "nora-assist-snooze-info", children: snoozeInfoText })
     ] })
   ] }) });
   return (0, import_react_dom2.createPortal)(popup, document.body);
 }
 
 // src/components/StepPopover.tsx
-var import_react8 = require("react");
+var import_react6 = require("react");
 var import_react_dom3 = require("react-dom");
-var import_jsx_runtime5 = require("react/jsx-runtime");
+var import_jsx_runtime4 = require("react/jsx-runtime");
 function StepPopover({ element, step, stepIndex, totalSteps, translateFn }) {
   const __ = (t) => translate(t, translateFn);
-  const popRef = (0, import_react8.useRef)(null);
-  (0, import_react8.useEffect)(() => {
+  const popRef = (0, import_react6.useRef)(null);
+  (0, import_react6.useEffect)(() => {
     if (!popRef.current || !element) return;
     positionPopover(popRef.current, element);
   }, [element, step]);
   if (!element) return null;
   const badge = `${__("Step")} ${stepIndex + 1}/${totalSteps}`;
-  const popover = /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { ref: popRef, id: "nora-step-popover", className: "nora-pop-bottom", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "nora-pop-arrow" }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "nora-pop-badge", children: badge }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+  const popover = /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { ref: popRef, id: "nora-step-popover", className: "nora-pop-bottom", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-pop-arrow" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "nora-pop-badge", children: badge }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
       "div",
       {
         className: "nora-pop-text",
@@ -1808,7 +1529,7 @@ function positionPopover(pop, element) {
 
 // src/components/PrerequisiteDialog.tsx
 var import_react_dom4 = require("react-dom");
-var import_jsx_runtime6 = require("react/jsx-runtime");
+var import_jsx_runtime5 = require("react/jsx-runtime");
 function PrerequisiteDialog({
   isOpen,
   prerequisites,
@@ -1818,7 +1539,7 @@ function PrerequisiteDialog({
 }) {
   const __ = (t) => translate(t, translateFn);
   if (!isOpen || !prerequisites.length) return null;
-  const dialog = /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+  const dialog = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
     "div",
     {
       style: {
@@ -1832,7 +1553,7 @@ function PrerequisiteDialog({
         backdropFilter: "blur(4px)"
       },
       onClick: onContinue,
-      children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+      children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
         "div",
         {
           style: {
@@ -1845,11 +1566,11 @@ function PrerequisiteDialog({
           },
           onClick: (e) => e.stopPropagation(),
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { style: { margin: "0 0 12px", fontSize: 16, fontWeight: 600 }, children: __("Recommended Prerequisites") }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { style: { margin: "0 0 12px", fontSize: 13, color: "#64748b" }, children: __("We recommend completing these formations first:") }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("ul", { style: { margin: "0 0 16px", paddingLeft: 20 }, children: prerequisites.map((p) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("li", { style: { padding: "4px 0", fontWeight: 600 }, children: escapeHtml(p.title) }, p.name)) }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { style: { margin: "0 0 12px", fontSize: 16, fontWeight: 600 }, children: __("Recommended Prerequisites") }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { style: { margin: "0 0 12px", fontSize: 13, color: "#64748b" }, children: __("We recommend completing these formations first:") }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("ul", { style: { margin: "0 0 16px", paddingLeft: 20 }, children: prerequisites.map((p) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("li", { style: { padding: "4px 0", fontWeight: 600 }, children: escapeHtml(p.title) }, p.name)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
                 "button",
                 {
                   style: {
@@ -1864,14 +1585,14 @@ function PrerequisiteDialog({
                   children: __("Do it first")
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
                 "button",
                 {
                   style: {
                     padding: "8px 16px",
                     border: "none",
                     borderRadius: 8,
-                    background: "#7c3aed",
+                    background: "#141414",
                     color: "white",
                     fontSize: 13,
                     fontWeight: 600,
@@ -1891,31 +1612,31 @@ function PrerequisiteDialog({
 }
 
 // src/components/NoraLearnProvider.tsx
-var import_jsx_runtime7 = require("react/jsx-runtime");
-var NoraLearnContext = (0, import_react9.createContext)({
+var import_jsx_runtime6 = require("react/jsx-runtime");
+var NoraLearnContext = (0, import_react7.createContext)({
   startLearn: async () => false,
   stopLearn: () => {
   },
   isActive: false
 });
 function useNoraLearn() {
-  return (0, import_react9.useContext)(NoraLearnContext);
+  return (0, import_react7.useContext)(NoraLearnContext);
 }
 function NoraLearnProvider({ config = {}, children }) {
-  const [currentRoute, setCurrentRoute] = (0, import_react9.useState)(
+  const [currentRoute, setCurrentRoute] = (0, import_react7.useState)(
     () => (config.getCurrentRoute || (() => window.location.pathname))()
   );
-  const [showPopup, setShowPopup] = (0, import_react9.useState)(false);
-  const popupTimerRef = (0, import_react9.useRef)(null);
-  const [prereqDialog, setPrereqDialog] = (0, import_react9.useState)({ open: false, prerequisites: [], learnName: "" });
-  (0, import_react9.useEffect)(() => {
+  const [showPopup, setShowPopup] = (0, import_react7.useState)(false);
+  const popupTimerRef = (0, import_react7.useRef)(null);
+  const [prereqDialog, setPrereqDialog] = (0, import_react7.useState)({ open: false, prerequisites: [], learnName: "" });
+  (0, import_react7.useEffect)(() => {
     if (config.csrfToken) setCsrfToken(config.csrfToken);
     else if (window.csrf_token) setCsrfToken(window.csrf_token);
   }, [config.csrfToken]);
   const session = useLearnSession(config);
   const { matchingLearns, snoozeRoute, refreshLearns } = useAvailableLearns(currentRoute);
   useRouteChange(
-    (0, import_react9.useCallback)(
+    (0, import_react7.useCallback)(
       (path) => {
         setCurrentRoute(path);
         setShowPopup(false);
@@ -1927,11 +1648,11 @@ function NoraLearnProvider({ config = {}, children }) {
       []
     )
   );
-  (0, import_react9.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     const timer = setTimeout(() => setShowPopup(true), 2e3);
     return () => clearTimeout(timer);
   }, []);
-  (0, import_react9.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     const saved = LearnSession.getSavedState();
     if (saved && !session.isActive) {
       session.resumeLearn(saved.learn_name).then((ok) => {
@@ -1939,7 +1660,7 @@ function NoraLearnProvider({ config = {}, children }) {
       });
     }
   }, []);
-  const handleStartLearn = (0, import_react9.useCallback)(
+  const handleStartLearn = (0, import_react7.useCallback)(
     async (name, skipPrerequisites = false) => {
       setShowPopup(false);
       const ok = await session.startLearn(name, skipPrerequisites);
@@ -1954,36 +1675,36 @@ function NoraLearnProvider({ config = {}, children }) {
     },
     [session]
   );
-  const handleStopLearn = (0, import_react9.useCallback)(() => {
+  const handleStopLearn = (0, import_react7.useCallback)(() => {
     session.stopLearn();
   }, [session]);
-  const handleNextLearn = (0, import_react9.useCallback)(
+  const handleNextLearn = (0, import_react7.useCallback)(
     async (name) => {
       session.resetCompleted();
       await handleStartLearn(name, true);
     },
     [session, handleStartLearn]
   );
-  const handleValidationFail = (0, import_react9.useCallback)(
+  const handleValidationFail = (0, import_react7.useCallback)(
     (message) => {
       const showAlert = config.showAlert || ((msg) => console.warn("[Nora Learn]", msg));
       showAlert(message, "warning");
     },
     [config.showAlert]
   );
-  const handleComplete = (0, import_react9.useCallback)(() => {
+  const handleComplete = (0, import_react7.useCallback)(() => {
     const showAlert = config.showAlert || ((msg) => console.log("[Nora Learn]", msg));
     showAlert("Learn completed!", "success");
     refreshLearns();
   }, [config.showAlert, refreshLearns]);
-  (0, import_react9.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     if (session.isCompleted) {
       handleComplete();
     }
   }, [session.isCompleted, handleComplete]);
   const showStepPopover = session.isActive && session.popoverElement && session.popoverStep && session.popoverStep.highlight_actions?.length;
   const sidebarTitle = session.state?.title || session.state?.learn_title || "";
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
     NoraLearnContext.Provider,
     {
       value: {
@@ -1993,7 +1714,7 @@ function NoraLearnProvider({ config = {}, children }) {
       },
       children: [
         children,
-        showPopup && !session.isActive && !session.isCompleted && matchingLearns.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        showPopup && !session.isActive && !session.isCompleted && matchingLearns.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           LearnPopup,
           {
             learns: matchingLearns,
@@ -2003,7 +1724,7 @@ function NoraLearnProvider({ config = {}, children }) {
             onSnooze: snoozeRoute
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           LearnSidebar,
           {
             isOpen: session.isActive || session.isCompleted,
@@ -2027,7 +1748,7 @@ function NoraLearnProvider({ config = {}, children }) {
             onValidationFail: handleValidationFail
           }
         ),
-        showStepPopover && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        showStepPopover && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           StepPopover,
           {
             element: session.popoverElement,
@@ -2037,7 +1758,7 @@ function NoraLearnProvider({ config = {}, children }) {
             translateFn: config.translate
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           PrerequisiteDialog,
           {
             isOpen: prereqDialog.open,
@@ -2056,7 +1777,6 @@ function NoraLearnProvider({ config = {}, children }) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  ChatArea,
   LearnPopup,
   LearnSession,
   LearnSidebar,
@@ -2072,21 +1792,17 @@ function NoraLearnProvider({ config = {}, children }) {
   executeMany,
   findVisibleElement,
   getAvailableLearns,
-  getBrowserActions,
   getCurrentUser,
   getLearnState,
   getStepAsMessage,
-  getThreadMessages,
   getUserAvatarUrl,
   highlight,
   pauseLearn,
   removeHighlight,
   renderMarkdown,
   resetLearn,
-  sendMessageInThread,
   setCsrfToken,
   sleep,
-  startConversation,
   startLearn,
   translate,
   useAvailableLearns,

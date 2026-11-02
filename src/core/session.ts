@@ -242,11 +242,7 @@ export class LearnSession {
     const stepIndex = this.state.current_step
 
     try {
-      const step = await api.getStepAsMessage(
-        this.learnName,
-        stepIndex,
-        this.state.is_test || false
-      )
+      const step = await api.getStepAsMessage(this.learnName, stepIndex)
 
       if (!step.success) return
       this.currentStep = step
@@ -337,6 +333,11 @@ export class LearnSession {
 
     const nextLearn = this.state?.next_learn
     const nextLearnTitle = this.state?.next_learn_title
+
+    // Every end comes here: Finish, a skipped last step, Do it for me. Without this the tutorial is offered again forever.
+    if (!this.state?.is_test) {
+      api.completeLearn(this.learnName).catch(() => {})
+    }
 
     // Cleanup demo documents
     api.cleanupDemoDocuments(this.learnName)

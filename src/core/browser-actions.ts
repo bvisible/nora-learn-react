@@ -10,7 +10,7 @@ let _highlightedElement: HTMLElement | null = null
 export function highlight(element: HTMLElement, options?: Record<string, unknown>): void {
   removeHighlight()
 
-  const color = (options?.glow as string) || '#7c3aed'
+  const color = (options?.glow as string) || '#F55D1A'
   const persistent = options?.persistent !== false
 
   // Save original styles

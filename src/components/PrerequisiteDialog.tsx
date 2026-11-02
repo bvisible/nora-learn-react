@@ -78,7 +78,7 @@ export function PrerequisiteDialog({
               padding: '8px 16px',
               border: 'none',
               borderRadius: 8,
-              background: '#7c3aed',
+              background: '#141414',
               color: 'white',
               fontSize: 13,
               fontWeight: 600,

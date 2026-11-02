@@ -1,9 +1,8 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { createPortal } from 'react-dom'
 import type { StepData, StepMessageData } from '../core/types'
 import { translate, escapeHtml } from '../core/utils'
 import { StepMessage } from './StepMessage'
-import { ChatArea } from './ChatArea'
 
 interface LearnSidebarProps {
   isOpen: boolean
@@ -49,7 +48,6 @@ export function LearnSidebar({
   onValidationFail,
 }: LearnSidebarProps) {
   const __ = (t: string) => translate(t, translateFn)
-  const [chatExpanded, setChatExpanded] = useState(false)
 
   if (!isOpen) return null
 
@@ -121,32 +119,6 @@ export function LearnSidebar({
           />
         ) : null}
       </div>
-
-      {/* Chat toggle — exact same as original */}
-      {!isCompleted && (
-        <div className="nora-lp-chat-toggle">
-          <button
-            className="nora-lp-btn nora-lp-chat-btn"
-            onClick={(e) => { e.stopPropagation(); setChatExpanded(!chatExpanded) }}
-          >
-            {chatExpanded ? __('Hide chat') + ' \u2715' : __('Ask NORA') + ' \uD83D\uDCAC'}
-          </button>
-        </div>
-      )}
-
-      {/* Chat area */}
-      {!isCompleted && (
-        <ChatArea
-          isExpanded={chatExpanded}
-          learnName={learnName}
-          learnTitle={title}
-          currentStep={currentStep}
-          stepIndex={stepIndex}
-          totalSteps={totalSteps}
-          noraIconUrl={noraIconUrl}
-          translateFn={translateFn}
-        />
-      )}
     </div>
   )
 
