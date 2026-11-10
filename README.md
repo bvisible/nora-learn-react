@@ -110,3 +110,7 @@ yarn build  # Production build
 
 - **Nora** — `bvisible/nora` (Frappe app with Learn DocTypes + API)
 - **frappe-sidebar-react** — `bvisible/frappe-sidebar-react` (same package pattern)
+
+## Licence
+
+MIT, see [LICENSE](LICENSE).
